@@ -8,7 +8,10 @@
     Aesthetic targets design/ mock: affect circumplex, glowing hex/circle/diamond nodes, inspector.
 *@
 
-<div class="cstage">
+<div class="cstage" style="@FpStyle">
+    @* fingerprint atmosphere (design §M5): fire warmth glows BENEATH the sky — a continuous
+       function of the fire/joy salience share, never a threshold *@
+    <div class="cfp-warm" style="opacity:@F(FpWarm)"></div>
     @* Zoom/pan drive the viewBox; LoD tiers disclose progressively (design §8): gestalt (zoomed
        out — shapes only), mid (major labels), near (everything). Distance does the filtering. *@
     <svg @ref="_svgEl" class="csky @LodClass @(_panning ? "panning" : "")"
@@ -46,7 +49,9 @@
         <ellipse class="cwash" cx="@F(_spanX * 0.5)" cy="500" rx="@F(_spanX * 0.16)" ry="230"
                  fill="#ff8a3d" opacity="0.024" filter="url(#cfog)" />
 
-        @* far-field micro-stars: uniform, ultra-faint — NO corner of the sky reads as flat black *@
+        @* far-field micro-stars: uniform, ultra-faint — NO corner of the sky reads as flat black.
+           Fingerprint: the dust field's GRAIN tracks the inferred share (texture channel). *@
+        <g style="opacity:@F(FpDust)">
         @for (var fi = 0; fi < 220; fi++)
         {
             <circle class="cdust" cx="@F(Dust(fi * 3 + 901) * _spanX)" cy="@F(Dust(fi * 3 + 902) * 1000)"
@@ -63,6 +68,7 @@
             <circle class="cdust @(tw ? "ctwinkle" : "")" cx="@F(Dust(di * 2 + 1) * _spanX)" cy="@F(Dust(di * 2 + 2) * 1000)"
                     r="@F(dr)" style="@dustStyle" />
         }
+        </g>
 
         @if (Model is { } vm)
         {
@@ -163,7 +169,7 @@
                     @* alive-drift = a Lissajous loop: x and y are SEPARATE single-axis sines on
                        different periods (nested layers), so velocity is continuous — no waypoint
                        direction-snaps, which read as Brownian jitter instead of swaying *@
-                    <g class="csway" style="--swa:@F(0.7 + Math.Abs(nd.Id % 7) * 0.13)px; --swd:@F(26 + Math.Abs(nd.Id % 9) * 2.2)s; animation-delay:-@F(Math.Abs(nd.Id % 13) * 2.9)s">
+                    <g class="csway" style="--swa:@F((0.7 + Math.Abs(nd.Id % 7) * 0.13) * FpDriftMul)px; --swd:@F(26 + Math.Abs(nd.Id % 9) * 2.2)s; animation-delay:-@F(Math.Abs(nd.Id % 13) * 2.9)s">
                      <g class="csway2" style="--swd2:@F(34 + Math.Abs(nd.Id % 7) * 2.6)s; animation-delay:-@F(Math.Abs(nd.Id % 11) * 3.7)s">
                       <g class="@(nd.TremorAmp > 0.001 ? "ctremor" : "")"
                          style="--tamp:@(F(nd.TremorAmp * 110))px; --tdur:@F(2.4 + nd.Id % 7 * 0.35)s">
@@ -174,7 +180,9 @@
                             @if (isCore)
                             {
                                 @* the mock's Core Self starburst: four soft rays + a bright heart *@
-                                <path class="cburst" d="@Starburst(p, rPx * 3.1)" fill="@fill" />
+                                @* fingerprint: the core's REACH tracks keystone concentration —
+                                   how much of the map's centrality leans on this one anchor *@
+                                <path class="cburst" d="@Starburst(p, rPx * FpCoreScale)" fill="@fill" />
                             }
                             @if (nd.GlowWarmth > 0.05 || major)
                             {
@@ -226,6 +234,10 @@
     <div class="cmeteor" style="left:66%; top:9%;  --ang:152deg; --dx:-400px; --dy:230px; animation-duration:26s; animation-delay:11s"></div>
     <div class="cmeteor" style="left:36%; top:55%; --ang:18deg; --dx:430px; --dy:140px; animation-duration:31s; animation-delay:21s"></div>
 
+    @* fingerprint: breadth (connection density) opens or closes the sky's aperture — a sparsely
+       connected map sits in a tighter frame; a densely woven one reads wide open *@
+    <div class="cfp-vignette" style="opacity:@F(FpVign)"></div>
+
     <!-- zoom controls -->
     <div class="czoom">
         <button title="Zoom in" @onclick="() => Zoom(1 / 1.3)">＋</button>
@@ -250,6 +262,26 @@
         <div><span class="ck">LIGHT</span> pulse = alive now · glow = creative fire</div>
         </div>
     </div>
+
+    @* fingerprint legend — the honesty guardrail: every atmosphere channel names its exact
+       metric and what it drives. Your data, not a type. Collapsed chip, hover to read. *@
+    @if (Model?.Fp is { } cfp)
+    {
+        <div class="cfp">
+            <div class="clegend-title">◈&nbsp; FINGERPRINT</div>
+            <div class="cfp-body">
+                @foreach (var ch in cfp.Channels)
+                {
+                    <div class="cfp-row" title="@($"{ch.Metric} → {ch.Visual}")">
+                        <span class="cfp-name">@ch.Name</span>
+                        <span class="cfp-bar"><span class="cfp-fill" style="width:@F(ch.Value * 100)%"></span></span>
+                        <span class="cfp-val">@ch.Value.ToString("0.00")</span>
+                    </div>
+                }
+                <div class="cfp-note">continuous readings of your data — not a personality type.<br/>hover a row for the exact metric.</div>
+            </div>
+        </div>
+    }
 
     @if (Model is { } m2 && (m2.Nodes.Count == 0))
     {
@@ -342,6 +374,18 @@
 
 @code {
     [Parameter] public VisualModel? Model { get; set; }
+
+    // --- generative fingerprint (design §M5): global continuous channels the sky wears --------
+    // Each mapping is linear in its 0..1 channel; the ranges keep the neutral point (~0.5) close
+    // to the sky's pre-fingerprint look so the atmosphere shifts with the person, never jars.
+    private double FpVal(string key) => Model?.Fp?[key] ?? 0.5;   // no fingerprint → neutral sky
+    private double FpWarm => 0.34 * FpVal("warmth");                          // fire → gold glow
+    private double FpVign => 0.55 * (1 - FpVal("breadth"));                   // density → aperture
+    private double FpDriftMul => 0.55 + 1.0 * FpVal("motion");                // restlessness → drift
+    private double FpCoreScale => 2.3 + 1.6 * FpVal("keystone");              // concentration → core reach
+    private double FpDust => 0.55 + 0.45 * FpVal("texture");                  // inference → grain
+    private string FpStyle => Model?.Fp is null ? "" :
+        $"--fpWeave:{F(0.55 + 0.75 * FpVal("weave"))};--fpField:brightness({F(0.72 + 0.62 * FpVal("tint"))})";
     [Parameter] public EventCallback<long> OnReject { get; set; }
     /// <summary>Hand this node to the chat — the host switches views and pre-quotes it.</summary>
     [Parameter] public EventCallback<VisualNode> OnAsk { get; set; }

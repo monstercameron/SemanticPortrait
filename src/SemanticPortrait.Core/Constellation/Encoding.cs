@@ -177,7 +177,8 @@ public static class Encoding
 
         double meanVal = model.Nodes.Count > 0 ? model.Nodes.Average(n => n.Valence) : 0;
         double linkedFrac = model.Join.TotalNodes > 0 ? (double)model.Join.LinkedNodes / model.Join.TotalNodes : 0;
-        return new VisualModel(nodes, edges, BuildHulls(model, nodes, clustered), meanVal, linkedFrac, model.Join);
+        return new VisualModel(nodes, edges, BuildHulls(model, nodes, clustered), meanVal, linkedFrac, model.Join,
+            FingerprintMetrics.Compute(model));
     }
 
     // ---------------------------------------------------------------- radial cluster layout

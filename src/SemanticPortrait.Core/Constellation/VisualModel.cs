@@ -35,11 +35,14 @@ public readonly record struct VisualEdge(
     bool Dashed,                          // inferred vs stated
     double PulseAmp, double PulseFreq);   // liveness (endpoint salience) → opacity throb
 
-/// <summary>The complete render payload: nodes + edges + asterisms + gestalt + join coverage.</summary>
+/// <summary>The complete render payload: nodes + edges + asterisms + gestalt + join coverage.
+/// <paramref name="Fp"/> is the generative fingerprint — global continuous channels the renderer
+/// wears as atmosphere (tint, warmth, drift…), each explainable to its metric.</summary>
 public sealed record VisualModel(
     IReadOnlyList<VisualNode> Nodes,
     IReadOnlyList<VisualEdge> Edges,
     IReadOnlyList<VisualHull> Hulls,
     double MeanValence,
     double LinkedFraction,
-    JoinReport Join);
+    JoinReport Join,
+    Fingerprint? Fp = null);
