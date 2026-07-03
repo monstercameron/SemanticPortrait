@@ -166,6 +166,7 @@ public partial class Home
         "complete_todo"      => "✅ checked off a todo",
         "set_reminder"       => "⏰ set a reminder",
         "upcoming"           => "🗓 checked your agenda",
+        "privacy_status"     => "🛡 checked what leaves this machine",
         "list_reminders"     => "⏰ checked your reminders",
         "cancel_reminder"    => "⏰ cancelled a reminder",
         "make_prediction"    => "🎯 logged a prediction",
@@ -250,7 +251,7 @@ public partial class Home
         // flat search_memory; portrait gives the interconnected view of one person/theme.
         // Exception: the intake counter is an operational write (worst-case poisoning = a wrong
         // count), offered ONLY while the intake is unfinished — it vanishes from specs after.
-        var specs = Tools.ReadSpecs.Concat(Recall.MainSpecs).Concat(Tasks.Specs)
+        var specs = Tools.ReadSpecs.Concat(Recall.MainSpecs).Concat(Tasks.Specs).Concat(Privacy.Specs)
             .Concat(Intake.IsComplete() ? Array.Empty<object>() : Intake.Specs)
             .Append(HandoffSpec).ToList();
         async Task<string> Exec(string name, string args)
@@ -279,6 +280,7 @@ public partial class Home
                 return "handed to the analyst (analyzing in the background)";
             }
             var result = Tasks.Handles(name) ? await Tasks.ExecuteAsync(name, args)
+                : Privacy.Handles(name) ? await Privacy.ExecuteAsync(name, args)
                 : Intake.Handles(name) ? await Intake.ExecuteAsync(name, args)
                 : Recall.Handles(name) ? await Recall.ExecuteAsync(name, args)
                 : Memory.Handles(name) ? await Memory.ExecuteAsync(name, args)

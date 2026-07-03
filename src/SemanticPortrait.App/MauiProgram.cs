@@ -167,6 +167,11 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ToastActivationService>();
 		builder.Services.AddSingleton<NotificationService>();
 		builder.Services.AddSingleton<TaskTools>();
+		// Read-only privacy awareness for the agent (report, never toggle — consent stays the user's).
+		builder.Services.AddSingleton(sp => new PrivacyTools(
+			() => Microsoft.Maui.Storage.Preferences.Default.Get("masking", false),
+			sp.GetRequiredService<ProviderRegistry>(),
+			() => ((PreferLocalEmbedder)sp.GetRequiredService<IEmbedder>()).LocalActive));
 		builder.Services.AddSingleton<GraphTools>();
 		builder.Services.AddSingleton<EntryTools>();
 		builder.Services.AddSingleton<PredictionTools>();
