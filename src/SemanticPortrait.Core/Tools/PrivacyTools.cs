@@ -53,6 +53,7 @@ public sealed class PrivacyTools
             ? "OS notifications: ALWAYS DISCREET — every toast shows a generic line, nothing personal on the lock screen."
             : "OS notifications: smart privacy — each reminder is classified; private text shows a generic placeholder (fails safe to private).");
         sb.AppendLine("storage: everything lives on this machine in an AES-256 (SQLCipher) vault keyed from Windows Hello/PIN; no accounts, no sync, no telemetry.");
+        sb.AppendLine("update check: one metadata-only ping to GitHub releases at launch (version number only, never content); updates are never downloaded automatically.");
         sb.AppendLine("to change any of this (user-only, you cannot): provider in ⋯ → LLM settings (LM Studio = fully local); masking in ⋯ → Security; toast discretion in the ⋯ menu.");
         return Task.FromResult(sb.ToString().TrimEnd());
     }

@@ -21,6 +21,7 @@
 @inject ProviderRegistry Providers
 @inject LMStudioClient LmStudio
 @inject NotificationService Notify
+@inject HttpClient Http
 @inject ToastActivationService ToastActivation
 @inject EmbeddingBackfill Backfill
 @inject RecallTools Recall
@@ -260,6 +261,11 @@
                     <span>@(_discreet ? "🕶" : "👁")</span>
                     @(_discreet ? "Toasts: always discreet" : "Toasts: smart privacy")
                 </button>
+                <button class="sp-menu-item" @onclick="CycleCheckin"
+                        title="A daily one-line invitation to reflect, at this hour — skipped on days you already wrote. Click to cycle.">
+                    <span>🌙</span>
+                    @(_checkinHour == 0 ? "Evening check-in: off" : $"Evening check-in: {_checkinHour}:00")
+                </button>
                 <div class="sp-menu-sep"></div>
                 @if (!_hideCosts)
                 {
@@ -267,6 +273,13 @@
                     <div class="sp-menu-info">@Usage.MonthSummary()</div>
                 }
                 <div class="sp-menu-info">@EgressSummary()</div>
+                @if (_updateTag is { } newTag)
+                {
+                    <button class="sp-menu-item" @onclick="OpenReleases"
+                            title="Opens the GitHub releases page in your browser — nothing downloads automatically.">
+                        <span>⬆</span> Update @newTag available…
+                    </button>
+                }
                 <button class="sp-menu-item" @onclick="HideApp">
                     <span>🫥</span> Hide to tray
                 </button>

@@ -27,6 +27,24 @@ public partial class Home
         NotificationService.Discreet = _discreet;
     }
 
+    // Update check: metadata-only ping at launch (disclosed in privacy_status); menu-only surfacing.
+    private string? _updateTag;
+    private void StartUpdateCheck() => _ = Task.Run(async () =>
+    {
+        var tag = await UpdateCheck.NewerReleaseAsync(Http, Microsoft.Maui.ApplicationModel.AppInfo.Current.VersionString);
+        if (tag is not null) await InvokeAsync(() => { _updateTag = tag; StateHasChanged(); });
+    }).Guard("update-check");
+    private void OpenReleases() =>
+        _ = Microsoft.Maui.ApplicationModel.Launcher.Default.OpenAsync(UpdateCheck.ReleasesUrl);
+
+    // Evening check-in: 0 = off; otherwise the local hour the daily reflection nudge may fire.
+    private int _checkinHour = Microsoft.Maui.Storage.Preferences.Default.Get("checkin_hour", 0);
+    private void CycleCheckin()
+    {
+        _checkinHour = _checkinHour switch { 0 => 19, 19 => 20, 20 => 21, 21 => 22, _ => 0 };
+        Microsoft.Maui.Storage.Preferences.Default.Set("checkin_hour", _checkinHour);
+    }
+
     private string _draft = "";
     private bool _busy;
 
@@ -174,6 +192,7 @@ public partial class Home
         _provider = Ai.DisplayName;
         NotificationService.Discreet = _discreet;   // sync the Core-side gate with the saved setting
         InitVoice();                                // optional sidecar voice — buttons render only if present
+        StartUpdateCheck();                         // metadata-only; silent when offline
         ToastActivation.Activated += OnToastActivated;
         if (ToastActivation.PendingArg is { } pendingArg) _pendingToastArg = pendingArg;   // cold-start click
 
