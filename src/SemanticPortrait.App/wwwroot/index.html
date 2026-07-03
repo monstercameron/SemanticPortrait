@@ -8,13 +8,16 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="SemanticPortrait.App.styles.css" />
     <link rel="icon" href="data:,">
+    <link rel="preload" as="image" href="img/close.png">   <!-- farewell screen must paint instantly -->
+    <link rel="preload" as="image" href="img/lockbg.png">
 </head>
 
 <body>
 
     <div class="status-bar-safe-area"></div>
 
-    <div id="app">Loading...</div>
+    <!-- boot splash: shows while Blazor spins up, replaced the moment the app renders -->
+    <div id="app"><div class="sp-boot"></div></div>
 
     <div id="blazor-error-ui" data-nosnippet>
         An unhandled error has occurred.

@@ -973,6 +973,12 @@
       }
     </div>
 
+    @* farewell screen — Quit shows it for a beat before the process exits *@
+    @if (_quitting)
+    {
+        <div class="sp-quit" aria-hidden="true"></div>
+    }
+
     @* dev error toasts — float above every view (chat, constellation, ambient) *@
     @if (_devToasts.Count > 0)
     {

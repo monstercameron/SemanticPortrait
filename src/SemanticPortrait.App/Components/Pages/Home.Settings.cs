@@ -302,8 +302,14 @@ public partial class Home
         }
     }
 
-    private void QuitApp()
+    /// <summary>Hard exit — a beat on the farewell screen, then the process really ends.</summary>
+    private bool _quitting;
+    private async Task QuitApp()
     {
+        if (_quitting) return;
+        _quitting = true; _showMenu = false;
+        StateHasChanged();
+        await Task.Delay(1500);
         SemanticPortrait.App.Services.TrayService.ReallyQuit = true;
         Microsoft.Maui.Controls.Application.Current?.Quit();
     }

@@ -292,13 +292,28 @@ body {
     100% { transform: scale(1.05); filter: drop-shadow(0 0 14px rgba(99,160,255,.55)); }
 }
 
-/* Immersive lock surface — deep navy→purple base matching the design mock. */
+/* boot splash: paints instantly inside #app while Blazor spins up, replaced on first render */
+.sp-boot {
+    position: fixed; inset: 0; background: #05060d url("img/boot.png") center / cover no-repeat;
+    animation: sp-boot-in .6s ease both;
+}
+@keyframes sp-boot-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* farewell screen: shown by Quit for a beat before the process exits */
+.sp-quit {
+    position: fixed; inset: 0; z-index: 6000;
+    background: #05060d url("img/close.png") center / cover no-repeat;
+    animation: sp-boot-in .45s ease both;
+}
+
+/* Immersive lock surface — the brand night-sky artwork over a deep navy base. */
 .sp-lock-immersive {
     background:
-        radial-gradient(120% 100% at 12% 18%, #2a1b53 0%, transparent 55%),
-        radial-gradient(120% 100% at 88% 82%, #0f3b57 0%, transparent 55%),
+        url("img/lockbg.png") center / cover no-repeat,
         linear-gradient(135deg, #0a1126 0%, #0c1430 55%, #0a1226 100%);
 }
+/* the aurora becomes an ACCENT over the artwork, not the wallpaper itself */
+.sp-lock-immersive .sp-lock-bg { opacity: .38; }
 
 /* Shader-y animated aurora: drifting, blurred color blobs over a flowing conic sheen. */
 .sp-lock-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
