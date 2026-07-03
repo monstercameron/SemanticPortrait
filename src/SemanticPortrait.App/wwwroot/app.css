@@ -785,8 +785,17 @@ body {
 
 /* the room: same deep-space family as the constellation, dimmed for reading */
 .theme-dark .sp-chat {
+    position: relative;
     background: radial-gradient(120% 110% at 50% 0%, #16161f 0%, #10101a 52%, #0b0b12 100%);
 }
+/* the brand night sky under the thread, half-blurred so it reads as atmosphere, not content
+   (blur must live on a pseudo-layer — filter on .sp-chat itself would smear the text) */
+.theme-dark .sp-chat::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: url("img/lockbg.png") center / cover no-repeat;
+    filter: blur(12px) brightness(.75); transform: scale(1.06);   /* overscan hides blur fringing */
+}
+.theme-dark .sp-chat > * { position: relative; z-index: 1; }
 
 /* bubbles: soft glass, less box */
 .theme-dark .sp-bubble {
