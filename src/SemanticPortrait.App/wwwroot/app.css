@@ -258,7 +258,7 @@ body {
     position: fixed; inset: 0; z-index: 3000; background: var(--bg);
     display: flex; align-items: center; justify-content: center; overflow: hidden;
     app-region: drag; -webkit-app-region: drag;   /* topbar is hidden here — drag from anywhere */
-    animation: sp-lock-in .5s cubic-bezier(.22,1,.36,1) both;
+    animation: sp-lock-in .65s cubic-bezier(.22,1,.36,1) both;
 }
 .sp-lock .sp-lock-card { animation: sp-card-in .55s cubic-bezier(.22,1,.36,1) .06s both; }
 
@@ -268,7 +268,11 @@ body {
 .sp-lock.sp-lock-out .sp-lock-logo { animation: sp-logo-unlock .42s cubic-bezier(.34,1.56,.64,1) both; }
 .sp-lock.sp-lock-out .sp-lock-bg { animation: sp-bg-out .7s ease .1s both; }
 
-@keyframes sp-lock-in  { from { opacity: 0; } to { opacity: 1; } }
+/* locking mirrors unlocking: the veil settles ON with the same blur/scale language the exit uses */
+@keyframes sp-lock-in {
+    from { opacity: 0; transform: scale(1.05); filter: blur(10px); }
+    to   { opacity: 1; transform: none;        filter: blur(0); }
+}
 @keyframes sp-lock-out {
     from { opacity: 1; transform: scale(1);     filter: blur(0); }
     to   { opacity: 0; transform: scale(1.06);  filter: blur(10px); }
@@ -292,12 +296,23 @@ body {
     100% { transform: scale(1.05); filter: drop-shadow(0 0 14px rgba(99,160,255,.55)); }
 }
 
-/* boot splash: paints instantly inside #app while Blazor spins up, replaced on first render */
-.sp-boot {
-    position: fixed; inset: 0; background: #05060d url("img/boot.png") center / cover no-repeat;
+/* boot splash: a body-level veil that paints instantly, sits ABOVE the app while Blazor mounts,
+   then lifts off with the same blur/scale language as the lock's exit (spDismissBoot). */
+#sp-boot-veil {
+    position: fixed; inset: 0; z-index: 7000;
+    background: #05060d url("img/boot.png") center / cover no-repeat;
     animation: sp-boot-in .6s ease both;
 }
+#sp-boot-veil.out {
+    animation: sp-veil-out .85s cubic-bezier(.4,0,.2,1) both;
+    pointer-events: none;
+}
 @keyframes sp-boot-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sp-veil-out {
+    from { opacity: 1; transform: scale(1);    filter: blur(0); }
+    to   { opacity: 0; transform: scale(1.05); filter: blur(10px); }
+}
+#app { background: #05060d; min-height: 100%; }   /* nothing pale ever peeks around the veil */
 
 /* farewell screen: shown by Quit for a beat before the process exits */
 .sp-quit {

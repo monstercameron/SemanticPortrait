@@ -237,7 +237,7 @@
                 <button class="sp-menu-item" @onclick="@(() => { OpenSecurity(); _showMenu = false; })">
                     <span>⚙</span> Security
                 </button>
-                <button class="sp-menu-item" @onclick="@(() => { LockNow(); _showMenu = false; })">
+                <button class="sp-menu-item" @onclick="@(async () => { _showMenu = false; await LockNow(); })">
                     <span>🔒</span> Lock
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { ToggleTheme(); _showMenu = false; })">

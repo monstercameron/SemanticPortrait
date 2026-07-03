@@ -62,7 +62,7 @@ public partial class Home
     }
     private void ResetIdle() { if (_idle is not null) { _idle.Stop(); _idle.Start(); } }
     private void IdleElapsed(object? s, System.Timers.ElapsedEventArgs e) =>
-        _ = InvokeAsync(() => { if (!_locked && !_configuring && _sessionKey is not null) { LockNow(); StateHasChanged(); } })
+        _ = InvokeAsync(async () => { if (!_locked && !_configuring && _sessionKey is not null) { await LockNow(); StateHasChanged(); } })
             .Guard("idle-lock");   // a fault here means the idle re-lock silently stopped working
 
     // A sandbox session that locks must UNLOCK back into the sandbox: every other unlock path
@@ -71,25 +71,30 @@ public partial class Home
     // now also refuses sandbox paths as defense-in-depth). Auth still verifies the REAL vault.
     private bool _relockToSandbox;
 
-    private void LockNow()
+    private async Task LockNow()
     {
 #if DEBUG
         _devUnlocked = false;       // a deliberate lock ends the dev bypass for this session
 #endif
-        if (Vault.Exists)
-        {
-            _relockToSandbox = Database.IsSandbox;
-            Database.Close();           // data becomes inaccessible until re-auth
-            _reminders?.Stop();
-            // Leave nothing personal readable in memory-backed UI state while locked:
-            _messages.Clear();
-            _notifs.Clear();
-            _constModel = null;
-            Trace.Clear();              // dev traces carry entry text
-            _sessionKey = null;
-            _locked = true; _pinEntry = ""; _lockMsg = "";
-        }
-        else { _configuring = true; }   // not set up yet → configure
+        if (!Vault.Exists) { _configuring = true; return; }   // not set up yet → configure
+        if (_locked) return;
+
+        // Cover FIRST, clear second: the lock veil blur/scales in OVER the live app, and only
+        // once it's opaque does anything visibly vanish — locking mirrors the unlock animation.
+        _relockToSandbox = Database.IsSandbox;
+        _locked = true; _pinEntry = ""; _lockMsg = "";
+        StateHasChanged();
+        await Task.Delay(650);          // sp-lock-in completes
+
+        Database.Close();               // data becomes inaccessible until re-auth
+        _reminders?.Stop();
+        // Leave nothing personal readable in memory-backed UI state while locked:
+        _messages.Clear();
+        _notifs.Clear();
+        _constModel = null;
+        Trace.Clear();                  // dev traces carry entry text
+        _sessionKey = null;
+        StateHasChanged();
     }
 
     // Persist the onboarding masking choice (asked once, changeable later in Security).

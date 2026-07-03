@@ -32,6 +32,14 @@ public partial class Home
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // First paint is done: give it a beat to settle, then lift the boot splash off the app
+        // (the veil lives OUTSIDE #app precisely so this can be a fade, not a hard cut).
+        if (firstRender)
+            _ = InvokeAsync(async () =>
+            {
+                await Task.Delay(350);
+                try { await JS.InvokeVoidAsync("spDismissBoot"); } catch { }
+            }).Guard("boot-veil");
         // Returning from the constellation recreates the chat DOM at scrollTop 0 — put the
         // user back at their last position (or the newest message if they were at the bottom).
         if (_restoreChatScroll && !_showConstellation)

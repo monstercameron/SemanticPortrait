@@ -16,8 +16,10 @@
 
     <div class="status-bar-safe-area"></div>
 
-    <!-- boot splash: shows while Blazor spins up, replaced the moment the app renders -->
-    <div id="app"><div class="sp-boot"></div></div>
+    <!-- boot splash: a body-level veil so the app can render UNDERNEATH it, then fade it away
+         (content inside #app would die on first render — a hard cut instead of a transition) -->
+    <div id="sp-boot-veil" aria-hidden="true"></div>
+    <div id="app"></div>
 
     <div id="blazor-error-ui" data-nosnippet>
         An unhandled error has occurred.
@@ -49,6 +51,13 @@
             if (!el) return;
             el.scrollTop = (window.__spChatAtBottom === false && window.__spChatScroll != null)
                 ? window.__spChatScroll : el.scrollHeight;
+        };
+        // Blazor calls this after its first paint: the splash lifts off the rendered app.
+        window.spDismissBoot = () => {
+            const v = document.getElementById('sp-boot-veil');
+            if (!v) return;
+            v.classList.add('out');
+            setTimeout(() => v.remove(), 950);
         };
     </script>
     <script src="js/constellation.js"></script>
