@@ -65,18 +65,20 @@ public partial class Home
         _ = InvokeAsync(() => { if (!_locked && !_configuring && _sessionKey is not null) { LockNow(); StateHasChanged(); } })
             .Guard("idle-lock");   // a fault here means the idle re-lock silently stopped working
 
+    // A sandbox session that locks must UNLOCK back into the sandbox: every other unlock path
+    // reopens with the real key, and a key-open against the plaintext sandbox encrypts it in
+    // place (observed 2026-07-02: a fresh hour-long import quarantined as *.notadb; Db.Open(key)
+    // now also refuses sandbox paths as defense-in-depth). Auth still verifies the REAL vault.
+    private bool _relockToSandbox;
+
     private void LockNow()
     {
 #if DEBUG
         _devUnlocked = false;       // a deliberate lock ends the dev bypass for this session
 #endif
-        // Sandbox sessions never lock: the lock protects the ENCRYPTED real DB, and every unlock
-        // path reopens with the real key — run against a plaintext sandbox that key-open would
-        // encrypt it in place (observed 2026-07-02: a fresh hour-long import quarantined as
-        // *.notadb). Db.Open(key) now also refuses sandbox paths as defense-in-depth.
-        if (Database.IsSandbox) return;
         if (Vault.Exists)
         {
+            _relockToSandbox = Database.IsSandbox;
             Database.Close();           // data becomes inaccessible until re-auth
             _reminders?.Stop();
             // Leave nothing personal readable in memory-backed UI state while locked:
@@ -121,7 +123,10 @@ public partial class Home
             if (_cfgHello) HelloKeys.Seal(key);                    // DPAPI-sealed copy for the Hello path
 
             _sessionKey = key;
-            Database.Open(key);                                    // creates/migrates → encrypted
+            // Setting up the lock FROM a sandbox session: the sandbox stays open and plaintext
+            // (the vault now exists for real runs); a key-open here would encrypt it in place.
+            if (Database.IsSandbox) _sessionKey = null;
+            else Database.Open(key);                               // creates/migrates → encrypted
             LoadThread();
             _cfgPin = _cfgPin2 = "";
             _configuring = false;
@@ -244,7 +249,11 @@ public partial class Home
     {
         if (_unlocking) return;
         _sessionKey = key;
-        Database.Open(key); LoadThread();
+        // A sandbox session re-opens the SANDBOX (plaintext) — the real key must never touch a
+        // sandbox path (encrypt-in-place quarantine). The auth above still proved the real vault.
+        if (_relockToSandbox) { _relockToSandbox = false; _sessionKey = null; Database.OpenDevSandbox(); }
+        else Database.Open(key);
+        LoadThread();
         _pinEntry = ""; _lockMsg = "";
         _unlocking = true; StateHasChanged();     // adds .sp-lock-out → exit animation runs
         await Task.Delay(820);

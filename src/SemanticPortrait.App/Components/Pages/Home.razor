@@ -146,6 +146,7 @@
             {
                 <span class="sp-chip sp-chip-muted" title="Spend this month (resets monthly)">$@Usage.MonthCostUsd.ToString("0.00")</span>
             }
+            <button class="sp-iconbtn" title="Lock" @onclick="LockNow">🔒</button>
             <button class="sp-iconbtn sp-bell @(_showNotifs ? "sp-on" : "")" @onclick="ToggleNotifs"
                     title="Notifications">
                 🔔
@@ -901,6 +902,7 @@
                     }
                 </div>
                 <div class="sp-const-float sp-cf-right">
+                    <button class="sp-cf-btn" title="Lock" @onclick="LockNow">🔒</button>
                     <button class="sp-cf-btn" title="Rebuild the map from all known facts"
                             disabled="@(_rebuildState == RState.Running)" @onclick="() => _showRebuildConfirm = true">
                         @(_rebuildState == RState.Running ? "✦ blooming…" : "⟳ rebuild")
