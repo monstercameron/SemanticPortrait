@@ -89,37 +89,48 @@ portrait accretes rather than drifts.
 
 ## Security & privacy
 
-A journal is the most sensitive document most people will ever produce. SemanticPortrait treats
-it that way:
+A journal is the most sensitive document most people will ever produce, so here is the honest
+version, not the marketing version.
 
-- **Everything lives on your machine.** No accounts, no sync, no server, no telemetry. The app
-  is a native Windows desktop application; your data never has a home anywhere else.
-- **Encrypted at rest.** The vault is **SQLCipher (AES-256)** SQLite. The encryption key is
-  *derived* from your **Windows Hello or PIN** unlock — no copy of it sits in the clear, and the
-  database file is unreadable without it.
-- **Notifications are privacy-classified.** Before a reminder is scheduled as an OS toast, an AI
+**The trade at the center:** by default, SemanticPortrait sends your entries to a **cloud
+frontier model** (OpenAI today; Claude and others on the roster) — because frankly, frontier
+models are better at this job, and an analyst that misreads you is worse than no analyst. That
+means the model provider processes your words under *their* privacy policy, not this app's.
+Masking helps; it does not make a cloud call private. If that trade isn't acceptable to you,
+switch to local inference below — the app works either way, and the choice is per-provider,
+changeable at any time.
+
+What the app itself guarantees:
+
+- **Storage is local and encrypted, always.** No accounts, no sync, no app server, no telemetry.
+  The vault is **SQLCipher (AES-256)** SQLite on your machine; the key is *derived* from your
+  **Windows Hello or PIN** unlock — no copy of it sits in the clear.
+- **Notifications are privacy-classified.** Before a reminder is scheduled as an OS toast, a
   classifier decides whether its text is safe for a lock screen; anything personal shows a
   generic placeholder instead — and the check *fails safe to private*.
-- **PII masking on the way out.** When you do use a cloud model, an optional local masking pass
-  pseudonymizes names, emails, and phone numbers before any request leaves the machine. Treat it
-  as harm-reduction, not anonymity — content can still re-identify you.
+- **PII masking on the way out.** An optional local pass pseudonymizes names, emails, and phone
+  numbers before a cloud request leaves the machine. Treat it as harm-reduction, not anonymity —
+  freeform journal content can still re-identify you.
 - **Local embeddings.** Semantic recall can run on an on-device MiniLM model, so the index that
-  knows everything about you is built without a single network call.
+  knows everything about you is built without a network call.
 
-### Fully private inference
+### Going private: local & self-hosted inference
 
-You don't have to send a cloud anything. SemanticPortrait speaks the OpenAI-compatible chat
-protocol to **any local inference server**:
+If you want nothing to leave your machine, SemanticPortrait speaks the OpenAI-compatible chat
+protocol to **any inference server you point it at**:
 
-- **[LM Studio](https://lmstudio.ai/)** is supported out of the box — point the app at your
-  local server, pick a model, and the entire loop (chat, analysis, recall) runs on your machine.
-  Because nothing leaves, the masking layer isn't even needed on that path.
+- **[LM Studio](https://lmstudio.ai/)** is supported out of the box — run a local model, and the
+  entire loop (chat, analysis, recall) stays on your machine. Nothing leaves, so the masking
+  layer isn't even needed on that path.
 - **Any OpenAI-compatible endpoint** works the same way — Ollama, llama.cpp's server, vLLM,
   LiteLLM, a box in your closet — the base URL is configurable in **⋯ → LLM settings**.
+- **Third-party "private-ish" hosts** (a VPS you rent, a privacy-marketed inference service) sit
+  in between: better than a data-hungry default, but you're still trusting someone else's
+  machine. Read their retention policy; don't take "private" on faith — including from us.
 
-Reaching for a frontier model instead is a conscious, disclosed trade: more intelligence, in
-exchange for not being fully local. That choice stays in your hands, and you can change your
-mind per provider at any time.
+Expect a quality trade: local and small hosted models are noticeably weaker analysts than
+frontier models today. That gap is why the cloud is the default — and why the switch is yours
+to flip, not ours.
 
 ## Built quietly underneath
 
