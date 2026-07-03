@@ -30,6 +30,7 @@ public partial class Home
         _ = InvokeAsync(async () =>
         {
             await FireDueReminders();
+            MaybeEveningCheckin();
             await DrainAnalysisQueue();
             // background compaction (~hourly): folds aged messages even while hidden in the tray,
             // so the next Send doesn't pay the compaction latency.
@@ -122,6 +123,39 @@ public partial class Home
             Notify.MarkSurfaced(notifId);
             RefreshNotifs();
         }
+    }
+
+    /// <summary>
+    /// Optional evening check-in (⋯ menu, off by default): at the chosen local hour, if the user
+    /// hasn't written since mid-afternoon, the agent offers ONE warm reflection invitation.
+    /// Once per local day; a day they already showed up gets no nudge — the journal invites,
+    /// it never nags.
+    /// </summary>
+    private void MaybeEveningCheckin()
+    {
+        try
+        {
+            if (_busy || _locked || _configuring || !Database.IsOpen || _messages.Count == 0) return;
+            var hour = Microsoft.Maui.Storage.Preferences.Default.Get("checkin_hour", 0);
+            if (hour == 0 || DateTime.Now.Hour < hour) return;
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            if (Database.GetSetting("checkin_day") == today) return;
+
+            // Already wrote this afternoon/evening → they showed up; no nudge needed today.
+            var last = Database.LastUserMessageUtc();
+            var wroteToday = last is not null
+                && Compactor.ParseUtc(last).ToLocalTime() >= DateTime.Now.Date.AddHours(15);
+            Database.SetSetting("checkin_day", today);   // one decision per day, nudge or not
+            if (wroteToday) return;
+
+            _ = FireProactive(
+                "[Evening check-in — the user opted into a daily reflection nudge at this hour, and " +
+                "they haven't written since this afternoon. Offer ONE warm, grounded line inviting them " +
+                "to reflect on the day — anchored in what you know is currently live for them if that " +
+                "helps. An invitation, not homework: no guilt, no list, no pressure to be deep.]")
+                .Guard("evening-checkin");
+        }
+        catch (Exception e) { DevTrap.Report("evening-checkin", e); }
     }
 
     /// <summary>

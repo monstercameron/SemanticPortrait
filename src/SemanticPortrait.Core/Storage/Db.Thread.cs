@@ -64,6 +64,18 @@ public sealed partial class Db
         }
     }
 
+    /// <summary>When the user last wrote anything (ISO utc), or null on an empty thread —
+    /// cheap single-row query for presence checks like the evening check-in.</summary>
+    public string? LastUserMessageUtc()
+    {
+        lock (_gate)
+        {
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = "SELECT created_utc FROM messages WHERE role='user' ORDER BY id DESC LIMIT 1;";
+            return cmd.ExecuteScalar() as string;
+        }
+    }
+
     public List<StoredMessage> GetMessages()
     {
         lock (_gate)
