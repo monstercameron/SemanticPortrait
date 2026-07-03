@@ -49,5 +49,9 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 [Run]
 Filename: "{app}\SemanticPortrait.App.exe"; Description: "Launch SemanticPortrait"; Flags: nowait postinstall skipifsilent
 
+[UninstallDelete]
+; Runtime-created WebView2 cache under the install dir (the journal vault lives elsewhere and survives).
+Type: filesandordirs; Name: "{app}\SemanticPortrait.App.exe.WebView2"
+
 [UninstallRun]
 ; Nothing to run — user data (encrypted vault) intentionally survives uninstall in %LOCALAPPDATA%.

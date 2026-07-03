@@ -65,6 +65,7 @@ jobs:
       - name: Checksums
         shell: pwsh
         run: |
+          Remove-Item dist/*.wixpdb -ErrorAction SilentlyContinue   # WiX debug symbols aren't release assets
           Get-FileHash dist/* -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } |
             Set-Content -Encoding ascii "dist/SHA256SUMS-${{ matrix.arch }}.txt"
