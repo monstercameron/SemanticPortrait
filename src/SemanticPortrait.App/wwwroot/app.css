@@ -822,7 +822,9 @@ body {
     background: url("img/lockbg.png") center / cover no-repeat;
     filter: blur(12px) brightness(.75); transform: scale(1.06);   /* overscan hides blur fringing */
 }
-.theme-dark .sp-chat > * { position: relative; z-index: 1; }
+/* lift content above the ::before backdrop — but NEVER touch fixed overlays (the right-click
+   menu + its scrim), or this higher-specificity rule flattens position:fixed into the flow */
+.theme-dark .sp-chat > :not(.sp-ctxmenu):not(.sp-menu-scrim) { position: relative; z-index: 1; }
 
 /* bubbles: soft glass, less box */
 .theme-dark .sp-bubble {
