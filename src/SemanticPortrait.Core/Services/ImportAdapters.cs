@@ -13,6 +13,8 @@ namespace SemanticPortrait.Core;
 ///
 /// Supported:
 ///  - Discord (DiscordChatExporter JSON)
+///  - Day One journal export (JSON)
+///  - Google Keep Takeout note (JSON)
 ///  - WhatsApp chat export (_chat.txt / "12/06/2024, 15:45 - Name: message")
 ///  - SMS ("SMS Backup &amp; Restore" XML)
 ///  - Generic CSV with a recognizable timestamp column
@@ -27,6 +29,8 @@ public static class ImportAdapters
         try
         {
             if (ext == ".json" && LooksLikeDiscordJson(text)) return FromDiscordJson(text);
+            if (ext == ".json" && LooksLikeDayOne(text)) return FromDayOneJson(text);
+            if (ext == ".json" && LooksLikeKeep(text)) return FromKeepNote(text);
             if (ext == ".xml" && text.Contains("<sms", StringComparison.OrdinalIgnoreCase)) return FromSmsXml(text);
             if (ext == ".csv") return FromCsv(text) ?? text;
             if (LooksLikeWhatsApp(text)) return FromWhatsApp(text);
@@ -68,6 +72,73 @@ public static class ImportAdapters
             var stamp = m.TryGetProperty("timestamp", out var ts) && DateTimeOffset.TryParse(ts.GetString(), out var dto)
                 ? dto.ToString("yyyy-MM-dd HH:mm") : "";
             sb.AppendLine($"[{stamp}] {author}: {content.Trim()}");
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    // ------------------------------------------------------------------ Day One (JSON export)
+    internal static bool LooksLikeDayOne(string text)
+    {
+        var head = text.Length > 4000 ? text[..4000] : text;
+        return head.Contains("\"entries\"") && head.Contains("\"creationDate\"");
+    }
+
+    internal static string FromDayOneJson(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("entries", out var entries) || entries.ValueKind != JsonValueKind.Array)
+            return json;
+        var sb = new StringBuilder();
+        foreach (var e in entries.EnumerateArray())
+        {
+            var text2 = e.TryGetProperty("text", out var t) ? t.GetString() : null;
+            if (string.IsNullOrWhiteSpace(text2)) continue;   // no body — nothing to import
+            var stamp = e.TryGetProperty("creationDate", out var cd) && DateTimeOffset.TryParse(cd.GetString(), out var dto)
+                ? dto.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
+            sb.AppendLine($"## [{stamp}]");
+            sb.AppendLine(text2.Trim());
+            sb.AppendLine();
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    // ------------------------------------------------------------------ Google Keep (Takeout note JSON)
+    internal static bool LooksLikeKeep(string text)
+    {
+        var head = text.Length > 4000 ? text[..4000] : text;
+        return head.Contains("\"userEditedTimestampUsec\"")
+            || (head.Contains("\"textContent\"") && head.Contains("\"isTrashed\""));
+    }
+
+    internal static string FromKeepNote(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        if (root.TryGetProperty("isTrashed", out var trashed) && trashed.ValueKind == JsonValueKind.True)
+            return "";   // trashed — nothing should import
+
+        long? usec = root.TryGetProperty("createdTimestampUsec", out var cu) && cu.TryGetInt64(out var cv) ? cv
+            : root.TryGetProperty("userEditedTimestampUsec", out var uu) && uu.TryGetInt64(out var uv) ? uv
+            : null;
+        var stamp = usec is { } us
+            ? DateTimeOffset.FromUnixTimeMilliseconds(us / 1000).ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"## [{stamp}]");
+        var title = root.TryGetProperty("title", out var ti) ? ti.GetString() : null;
+        if (!string.IsNullOrWhiteSpace(title)) sb.AppendLine(title.Trim());
+        var body = root.TryGetProperty("textContent", out var tc) ? tc.GetString() : null;
+        if (!string.IsNullOrWhiteSpace(body)) sb.AppendLine(body.Trim());
+        if (root.TryGetProperty("listContent", out var list) && list.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in list.EnumerateArray())
+            {
+                var itemText = item.TryGetProperty("text", out var it) ? it.GetString() : null;
+                if (string.IsNullOrWhiteSpace(itemText)) continue;
+                var isChecked = item.TryGetProperty("isChecked", out var ic) && ic.ValueKind == JsonValueKind.True;
+                sb.AppendLine($"{(isChecked ? "[x]" : "[ ]")} {itemText.Trim()}");
+            }
         }
         return sb.ToString().TrimEnd();
     }

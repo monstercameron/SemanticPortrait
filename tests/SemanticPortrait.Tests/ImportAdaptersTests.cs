@@ -105,4 +105,73 @@ public class ImportAdaptersTests
         const string badXml = "<sms unclosed";
         Assert.Equal(badXml, ImportAdapters.Normalize("sms.xml", badXml));
     }
+
+    [Fact]
+    public void DayOne_export_becomes_dated_blocks_and_skips_empty_entries()
+    {
+        const string json = """
+        {
+          "metadata": { "version": "1.0" },
+          "entries": [
+            { "creationDate": "2025-03-14T18:02:33Z", "modifiedDate": "2025-03-14T18:10:00Z", "text": "Bouldered with Mia.\n\nFelt strong on the v5.", "starred": false },
+            { "creationDate": "2025-03-15T09:00:00Z", "modifiedDate": "2025-03-15T09:00:00Z", "text": "   ", "starred": false },
+            { "creationDate": "2025-03-16T07:30:00Z", "modifiedDate": "2025-03-16T07:30:00Z", "text": "Rest day.", "starred": true }
+          ]
+        }
+        """;
+        var res = ImportAdapters.Normalize("Journal.json", json);
+        var stamp1 = DateTimeOffset.Parse("2025-03-14T18:02:33Z").ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        var stamp2 = DateTimeOffset.Parse("2025-03-16T07:30:00Z").ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        Assert.Contains($"## [{stamp1}]", res);
+        Assert.Contains("Bouldered with Mia.\n\nFelt strong on the v5.", res);   // multi-paragraph preserved
+        Assert.Contains($"## [{stamp2}]", res);
+        Assert.Contains("Rest day.", res);
+        Assert.Equal(2, res.Split("## [").Length - 1);                          // blank-text entry skipped
+    }
+
+    [Fact]
+    public void Keep_note_with_title_and_list_normalizes()
+    {
+        const string json = """
+        {
+          "title": "Gym bag",
+          "textContent": "Pack before Friday",
+          "userEditedTimestampUsec": 1741975320000000,
+          "createdTimestampUsec": 1741975200000000,
+          "isTrashed": false,
+          "listContent": [
+            { "text": "chalk bag", "isChecked": true },
+            { "text": "climbing shoes", "isChecked": false }
+          ]
+        }
+        """;
+        var res = ImportAdapters.Normalize("Gym bag.json", json);
+        var stamp = DateTimeOffset.FromUnixTimeMilliseconds(1741975200000000L / 1000).ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+        Assert.Contains($"## [{stamp}]", res);
+        Assert.Contains("Gym bag", res);
+        Assert.Contains("Pack before Friday", res);
+        Assert.Contains("[x] chalk bag", res);
+        Assert.Contains("[ ] climbing shoes", res);
+    }
+
+    [Fact]
+    public void Trashed_keep_note_produces_nothing()
+    {
+        const string json = """
+        {
+          "title": "old idea",
+          "textContent": "scrap this",
+          "userEditedTimestampUsec": 1741975320000000,
+          "isTrashed": true
+        }
+        """;
+        Assert.Equal("", ImportAdapters.Normalize("old idea.json", json));
+    }
+
+    [Fact]
+    public void Malformed_DayOne_ish_json_degrades_to_passthrough()
+    {
+        const string bad = "{ \"entries\": [ { \"creationDate\": \"2025-03-14T18:02:00Z\", this is not valid json";
+        Assert.Equal(bad, ImportAdapters.Normalize("journal.json", bad));
+    }
 }
