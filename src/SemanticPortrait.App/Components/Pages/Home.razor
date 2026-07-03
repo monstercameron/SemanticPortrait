@@ -878,16 +878,21 @@
                               placeholder="Write a message…" rows="1"></textarea>
                     @if (_voiceAvailable)
                     {
-                        @* states: idle mic → LIVE red pulsing mic (click to finish) → hourglass while
-                           transcribing. The mic stays a mic while listening — a stop square read as "off". *@
-                        <button class="sp-mic @(_recording ? "rec" : "") @(_transcribing ? "busy" : "")"
-                                @onclick="ToggleMic" disabled="@(_busy || _transcribing)"
-                                title="@(_recording ? "Listening — click when you're done" : _transcribing ? "Transcribing on the NPU…" : "Dictate (on-device Whisper)")">
-                            @(_transcribing ? "⏳" : "🎙")
+                        @* continuous dictation: idle mic → LIVE red pulsing mic (listen/chunk/type
+                           loop, pauses just commit a chunk) → hourglass while the tail drains.
+                           ONLY the explicit click stops the listen. *@
+                        <button class="sp-mic @(_recording ? "rec" : "") @(!_recording && _sttPending > 0 ? "busy" : "")"
+                                @onclick="ToggleMic" disabled="@_busy"
+                                title="@(_recording ? "Listening — click to stop dictating" : _sttPending > 0 ? "Transcribing the last of it…" : "Dictate (on-device Whisper, continuous)")">
+                            @(!_recording && _sttPending > 0 ? "⏳" : "🎙")
                         </button>
                         @if (_recording)
                         {
-                            <span class="sp-mic-live">listening…</span>
+                            <span class="sp-mic-live">listening…@(_sttPending > 0 ? $" ✍{_sttPending}" : "")</span>
+                        }
+                        else if (_sttPending > 0)
+                        {
+                            <span class="sp-mic-live">writing it down…</span>
                         }
                     }
                     <button class="sp-send-circle" @onclick="Send"

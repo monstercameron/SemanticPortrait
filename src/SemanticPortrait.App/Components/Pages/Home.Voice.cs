@@ -13,9 +13,9 @@ public partial class Home
     private VoiceAudio? _voiceAudio;
     private bool _voiceAvailable;
     private bool _recording;
-    private bool _transcribing;
+    private int _sttPending;         // utterance chunks awaiting transcription
     private Msg? _speaking;          // the reply currently being synthesized/spoken
-    private string? _recPath;
+    private readonly SemaphoreSlim _sttGate = new(1, 1);   // one sidecar process at a time
 
     private void InitVoice()
     {
@@ -28,37 +28,57 @@ public partial class Home
         _voiceAvailable = _voice.Available;
     }
 
-    /// <summary>Mic button: first press records, second press stops + transcribes into the draft.</summary>
-    private async Task ToggleMic()
+    /// <summary>Mic button: press to START a continuous listen — speech is segmented at natural
+    /// pauses and each utterance transcribes into the composer as you go — press again to STOP.
+    /// Only the explicit stop ends the session (a pause just commits a chunk).</summary>
+    private void ToggleMic()
     {
-        if (_voice is null || _transcribing) return;
+        if (_voice is null) return;
         _voiceAudio ??= new VoiceAudio();
         if (!_recording)
         {
-            try { _recPath = _voiceAudio.StartRecording(); _recording = true; }
+            try { _voiceAudio.StartContinuous(OnUtterance); _recording = true; }
             catch (Exception ex) { _messages.Add(new() { Role = "sys", Text = $"🎙 mic unavailable — {ex.Message}" }); }
             return;
         }
-        _voiceAudio.StopRecording();
-        _recording = false; _transcribing = true; StateHasChanged();
-        try
+        _voiceAudio.StopContinuous();   // trailing speech flushes as a final utterance
+        _recording = false;
+        StateHasChanged();
+    }
+
+    /// <summary>One segmented utterance (called off the audio thread): queue it through the
+    /// sidecar one-at-a-time and append the text to the composer as it arrives.</summary>
+    private void OnUtterance(string wavPath)
+    {
+        Interlocked.Increment(ref _sttPending);
+        _ = InvokeAsync(StateHasChanged).Guard("voice-chunk-ui");
+        _ = Task.Run(async () =>
         {
-            var text = _recPath is null ? null : await _voice.TranscribeAsync(_recPath);
-            if (!string.IsNullOrWhiteSpace(text))
+            try
             {
-                _draft = string.IsNullOrWhiteSpace(_draft) ? text : _draft.TrimEnd() + " " + text;
-                // Land the transcript VISIBLY in the composer for review/editing before send —
-                // Blazor's re-render alone can leave the textarea stale after an async handler.
-                try { await JS.InvokeVoidAsync("spSetComposer", _input, _draft); } catch { }
+                await _sttGate.WaitAsync();
+                try
+                {
+                    var text = await _voice!.TranscribeAsync(wavPath);
+                    if (!string.IsNullOrWhiteSpace(text))
+                        await InvokeAsync(async () =>
+                        {
+                            _draft = string.IsNullOrWhiteSpace(_draft) ? text : _draft.TrimEnd() + " " + text;
+                            // Land it VISIBLY for review — Blazor's re-render alone can leave the
+                            // textarea stale after async work.
+                            try { await JS.InvokeVoidAsync("spSetComposer", _input, _draft); } catch { }
+                            StateHasChanged();
+                        });
+                }
+                finally { _sttGate.Release(); }
             }
-            else _messages.Add(new() { Role = "sys", Text = "🎙 didn't catch anything — try again a little closer to the mic" });
-        }
-        finally
-        {
-            if (_recPath is not null) { try { File.Delete(_recPath); } catch { } _recPath = null; }
-            _transcribing = false;
-            StateHasChanged();
-        }
+            finally
+            {
+                try { File.Delete(wavPath); } catch { }
+                Interlocked.Decrement(ref _sttPending);
+                _ = InvokeAsync(StateHasChanged).Guard("voice-chunk-done");
+            }
+        }).Guard("voice-utterance");
     }
 
     /// <summary>Speaker button on a reply: synthesize + play; pressing again stops.</summary>
