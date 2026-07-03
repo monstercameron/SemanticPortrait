@@ -61,6 +61,20 @@
             el.dispatchEvent(new Event('input', { bubbles: true }));
             el.focus();
             el.selectionStart = el.selectionEnd = el.value.length;
+            window.spGrowComposer(el);
+        };
+        // The composer grows with its content (dictation appends whole sentences at a time),
+        // capped by the CSS max-height, after which it scrolls internally.
+        window.spGrowComposer = (el) => {
+            if (!el) return;
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+        };
+        window.spWatchComposer = (el) => {
+            if (!el || el.dataset.spGrow) return;
+            el.dataset.spGrow = "1";
+            el.addEventListener('input', () => window.spGrowComposer(el));
+            window.spGrowComposer(el);
         };
         // Blazor calls this after its first paint: the splash lifts off the rendered app.
         window.spDismissBoot = () => {

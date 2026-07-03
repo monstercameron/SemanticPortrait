@@ -62,7 +62,11 @@ public partial class Home
             try { await JS.InvokeVoidAsync("spScrollToBottom", _messagesEl); } catch { }
         }
         if (!_showConstellation && !_locked && !_configuring)
+        {
             try { await JS.InvokeVoidAsync("spTrackScroll", _messagesEl); } catch { }
+            // the composer grows with its content (typing AND dictation), capped by CSS max-height
+            try { await JS.InvokeVoidAsync("spWatchComposer", _input); } catch { }
+        }
         if (_focusNext && !_busy)
         {
             _focusNext = false;
