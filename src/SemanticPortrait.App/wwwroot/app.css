@@ -122,6 +122,21 @@ body {
     font: inherit; font-size: 12px; cursor: pointer;
 }
 .sp-cleared-note:hover { border-color: var(--accent); color: var(--text); }
+
+/* optional voice: dictation mic in the composer + read-aloud on replies */
+.sp-mic {
+    width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 15px;
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    flex-shrink: 0; align-self: flex-end; margin-bottom: 4px;
+}
+.sp-mic:hover { border-color: var(--accent); }
+.sp-mic.rec { background: #c0392b; border-color: #c0392b; color: #fff; animation: sp-mic-pulse 1.4s ease-in-out infinite; }
+@keyframes sp-mic-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,.45); } 50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); } }
+.sp-speak {
+    background: transparent; border: none; cursor: pointer; font-size: 11px;
+    color: var(--muted); padding: 0 4px; opacity: .55;
+}
+.sp-speak:hover, .sp-speak.on { opacity: 1; color: var(--accent); }
 .sp-danger-btn:hover { color: #ff5a5a; border-color: #ff5a5a; }
 
 /* masking consent (onboarding + security) */

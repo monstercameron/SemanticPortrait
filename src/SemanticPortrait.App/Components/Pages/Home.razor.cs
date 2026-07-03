@@ -169,6 +169,7 @@ public partial class Home
     {
         _provider = Ai.DisplayName;
         NotificationService.Discreet = _discreet;   // sync the Core-side gate with the saved setting
+        InitVoice();                                // optional sidecar voice — buttons render only if present
         ToastActivation.Activated += OnToastActivated;
         if (ToastActivation.PendingArg is { } pendingArg) _pendingToastArg = pendingArg;   // cold-start click
 

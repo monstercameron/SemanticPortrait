@@ -839,7 +839,15 @@
                                 {
                                     <div class="sp-sourced">✓ Sourced from your journal</div>
                                 }
-                                <div class="sp-time">@m.Time</div>
+                                <div class="sp-time">
+                                    @m.Time
+                                    @if (_voiceAvailable && m.Role == "ai" && !m.Streaming && !string.IsNullOrWhiteSpace(m.Text))
+                                    {
+                                        <button class="sp-speak @(_speaking == m ? "on" : "")"
+                                                title="@(_speaking == m ? "Stop" : "Read aloud (on-device voice)")"
+                                                @onclick="() => SpeakMessage(m)">@(_speaking == m ? "⏹" : "🔊")</button>
+                                    }
+                                </div>
                             </div>
                         </div>
                     }
@@ -868,6 +876,13 @@
                     <textarea @ref="_input" @bind="_draft" @bind:event="oninput"
                               @onkeydown="OnKey" disabled="@_busy"
                               placeholder="Write a message…" rows="1"></textarea>
+                    @if (_voiceAvailable)
+                    {
+                        <button class="sp-mic @(_recording ? "rec" : "")" @onclick="ToggleMic" disabled="@_busy"
+                                title="@(_recording ? "Stop and transcribe" : _transcribing ? "Transcribing…" : "Dictate (on-device Whisper)")">
+                            @(_transcribing ? "…" : _recording ? "⏹" : "🎙")
+                        </button>
+                    }
                     <button class="sp-send-circle" @onclick="Send"
                             disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" title="Send">
                         @(_busy ? "…" : "↑")
