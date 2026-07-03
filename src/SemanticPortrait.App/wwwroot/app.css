@@ -774,14 +774,20 @@ body {
 
 /* ---- chat-as-focus: the chrome recedes, the conversation carries the room ---- */
 /* slim translucent top bar (dark theme) */
+/* solid enough to read over the blurred sky; recede via SIZE and calm, not via fading the
+   items themselves — "can't clearly see the menu items" was the failure mode of alpha-fading */
 .theme-dark .sp-topbar {
-    background: linear-gradient(180deg, rgba(15,15,22,.96), rgba(15,15,22,.85));
-    border-bottom-color: rgba(255,255,255,.05);
+    background: linear-gradient(180deg, rgba(13,13,20,.99), rgba(13,13,20,.94));
+    border-bottom-color: rgba(255,255,255,.08);
 }
 .sp-topbar { padding: 6px 12px; }
-.theme-dark .sp-name { color: rgba(255,255,255,.42); font-weight: 500; }
-.theme-dark .sp-devmode { opacity: .8; font-size: 10px; padding: 1px 8px; }
-.theme-dark .sp-chip { opacity: .85; }
+.theme-dark .sp-name { color: rgba(255,255,255,.82); font-weight: 600; }
+.theme-dark .sp-devmode { font-size: 10px; padding: 1px 8px; }
+.theme-dark .sp-chip {
+    background: rgba(38,38,50,.92); color: rgba(255,255,255,.88);
+    border-color: rgba(255,255,255,.14);
+}
+.theme-dark .sp-topbar .sp-iconbtn { color: rgba(255,255,255,.88); }
 
 /* the room: same deep-space family as the constellation, dimmed for reading */
 .theme-dark .sp-chat {
