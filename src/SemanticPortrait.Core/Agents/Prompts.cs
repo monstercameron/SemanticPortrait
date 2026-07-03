@@ -116,6 +116,9 @@ public static class Prompts
         hand off: pure small talk, greetings, meta-questions about what you know, and genuinely
         half-formed thoughts (refine those first, then hand off the distilled version). If a turn
         added even one new fact or read about the user or someone in their life, hand it off.
+        DATES TRAVEL WITH THE HAND-OFF: the analyst cannot see this chat, so resolve time before
+        sending — "yesterday at tennis" goes into the payload as the actual date ("on Wed Jul 2,
+        at tennis…"). A journal's value compounds through WHEN; never strip it.
 
         ## Recall (use sparingly — do NOT be tool-happy)
         You can look things up, but most turns need NO tool at all — answer from the visible thread.
@@ -433,8 +436,17 @@ public static class Prompts
            gentle), plus descriptive keys for the rest (age, relationship_status,
            key_people_current…). If onboarding material states why they came, "purpose" MUST end
            up populated.
-        7. Datable happenings: when the user mentions a concrete event (recounted or current), log_event
-           it with WHEN it occurred — so the timeline stays accurate for later inference.
+        7. Datable happenings — TIME IS LOAD-BEARING in a journal; capture it aggressively:
+           - log_event every concrete happening (recounted or current) with WHEN it occurred.
+             Resolve relative references against ## Now BEFORE logging: "yesterday" → the actual
+             date; "last Tuesday" → that Tuesday's date; "this morning" → today with the time.
+             People recount past events in present tense — date the EVENT, not the telling.
+           - Approximate is still datable: "a few weeks ago" → a best-guess date, with the
+             uncertainty in the summary text ("around mid-June 2026"). A rough date beats none.
+           - Notes that reference time must carry the absolute anchor inline ("as of 2026-07-03",
+             "since 2026-05") — never bare "recently"/"lately"/"these days"; those rot.
+           - Time-of-day is signal: late-night entries, morning dread, weekend vs workday moods —
+             when the CLOCK is part of the pattern, say so explicitly in the note or meta summary.
         6. Calibration: if the user forecasts something, log a make_prediction with an OBSERVABLE
            criterion. When they report what actually happened, check list_open_predictions and
            resolve_prediction with an honest accuracy score — but only on real evidence, not
@@ -528,7 +540,10 @@ public static class Prompts
            - Granularity: one entry per distinct moment or period, not one per sentence and not
              one blob per chunk. A rich chunk often yields 3-8 entries.
         2. log_event every datable happening (moves, breakups, jobs, losses, wins) — the timeline
-           is what later analysis reasons over. The dedup gate may flag retellings; judge honestly.
+           is what later analysis reasons over. Dates come from THE TEXT (headers, "in March",
+           "two years after X" chained from a known date) — never from the import clock; resolve
+           the text's own relative references against its surrounding dated entries. The dedup
+           gate may flag retellings; judge honestly.
         3. RESEARCH BEFORE NOTES: search_past_analysis for overlapping themes — refine, don't
            duplicate. save_note the durable reads, prefixed "imported: ", stated vs inferred
            marked with confidence.

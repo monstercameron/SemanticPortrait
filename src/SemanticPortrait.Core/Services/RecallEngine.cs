@@ -502,10 +502,12 @@ public sealed class RecallEngine
     private static string Trim(string s, int n) => s.Length <= n ? s : s[..n] + "…";
     private static string Conf(NeighborEdge e) => e.Inferred ? $" (inferred {e.Confidence:0.0})" : "";
     private static DateTime Iso(string s) => Compactor.ParseUtc(s);
+    // Weekday + LOCAL date: a journal's rhythms live in weekdays and evenings — "Tue 2026-07-01"
+    // lets the agent see "Tuesday nights" as a pattern instead of opaque dates.
     private static string Day(string utc)
     {
         var d = Compactor.ParseUtc(utc);
-        return d == DateTime.MinValue ? utc : d.ToString("yyyy-MM-dd");
+        return d == DateTime.MinValue ? utc : d.ToLocalTime().ToString("ddd yyyy-MM-dd");
     }
     /// <summary>Model-supplied dates arrive in many shapes; parse loosely, fall back wide.</summary>
     private static string NormalizeIso(string? iso, DateTime fallbackUtc) =>

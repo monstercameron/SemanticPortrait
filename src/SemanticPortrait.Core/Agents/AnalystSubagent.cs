@@ -75,9 +75,15 @@ public sealed class AnalystSubagent
             return result;
         }
 
+        // Time is load-bearing in a journal: without Now the analyst cannot resolve "yesterday"
+        // or "last Tuesday" into the absolute dates recall depends on.
+        var sysWithNow = Prompts.AnalystSubagent + NowBlock(
+            "The entry above was written at this time unless it says otherwise - resolve every " +
+            "relative time reference in it against this clock before logging events or notes.");
+
         var summary = new StringBuilder();
         await foreach (var tok in _providers.Active.StreamReplyAsync(
-            Prompts.AnalystSubagent, input, specs, Exec,
+            sysWithNow, input, specs, Exec,
             onReasoning: r => _trace.Add("analyst", "thought", "reasoning", r),
             effort: "high",              // deep reasoning for the durable model
             onError: e => { _trace.Add("analyst", "error", "provider", e); onProviderError?.Invoke(e); }, ct: ct))
@@ -115,7 +121,10 @@ public sealed class AnalystSubagent
         }
 
         var summary = new System.Text.StringBuilder();
-        await foreach (var tok in _providers.Active.StreamReplyAsync(Prompts.BulkImport, input, specs, Exec, effort: "medium",
+        await foreach (var tok in _providers.Active.StreamReplyAsync(Prompts.BulkImport + NowBlock(
+            "This is HISTORICAL material being imported now - date entries and events from the " +
+            "dates IN THE TEXT, never from the import time; use this clock only to resolve " +
+            "relative references the text itself makes."), input, specs, Exec, effort: "medium",
             onError: e => _trace.Add("analyst", "error", "provider", e), ct: ct))
             summary.Append(tok);
         var final = summary.ToString().Trim();
@@ -148,4 +157,10 @@ public sealed class AnalystSubagent
     }
 
     private static string Truncate(string s, int n) => s.Length <= n ? s : s[..n] + "…";
+
+    /// <summary>Current-time block for analyst prompts. A journal's analysis is worthless
+    /// without a clock: every relative reference must resolve to an absolute date.</summary>
+    private static string NowBlock(string framing) =>
+        $"\n\n## Now\nCurrent local time: {DateTime.Now:dddd, MMM d, yyyy h:mm tt} " +
+        $"({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC). {framing}";
 }
