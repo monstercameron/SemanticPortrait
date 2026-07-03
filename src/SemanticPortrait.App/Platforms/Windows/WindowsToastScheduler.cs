@@ -11,13 +11,17 @@ namespace SemanticPortrait.App.Services;
 /// </summary>
 public sealed class WindowsToastScheduler : IToastScheduler
 {
-    public Task ScheduleAsync(string tag, string group, DateTimeOffset whenUtc, string title, string body, string argument)
+    public Task ScheduleAsync(string tag, string group, DateTimeOffset whenUtc, string title, string body, string argument,
+        IReadOnlyList<(string Label, string Argument)>? buttons = null)
     {
-        var content = new ToastContentBuilder()
+        var builder = new ToastContentBuilder()
             .AddArgument("a", argument)
             .AddText(title)
-            .AddText(body)
-            .GetToastContent();
+            .AddText(body);
+        if (buttons is not null)
+            foreach (var (label, arg) in buttons)
+                builder.AddButton(new ToastButton().SetContent(label).AddArgument("a", arg));
+        var content = builder.GetToastContent();
 
         var xml = content.GetXml();
         var notifier = ToastNotificationManagerCompat.CreateToastNotifier();

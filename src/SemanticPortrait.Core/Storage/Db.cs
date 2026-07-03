@@ -474,6 +474,7 @@ public sealed partial class Db
         try { Exec("ALTER TABLE reminders ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;"); } catch { /* present */ }
         try { Exec("ALTER TABLE notifications ADD COLUMN surfaced INTEGER NOT NULL DEFAULT 0;"); } catch { /* present */ }
         try { Exec("ALTER TABLE predictions ADD COLUMN notified INTEGER NOT NULL DEFAULT 0;"); } catch { /* present */ }
+        try { Exec("ALTER TABLE todos ADD COLUMN due_utc TEXT;"); } catch { /* present */ }
     }
 
     /// <summary>Permanently delete ALL data — including settings/API keys — and reset ids

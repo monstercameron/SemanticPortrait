@@ -6,14 +6,15 @@ namespace SemanticPortrait.Core;
 public sealed partial class Db
 {
     // --- todos ---------------------------------------------------------------
-    public long AddTodo(string text)
+    public long AddTodo(string text, string? dueUtc = null)
     {
         lock (_gate)
         {
             using var cmd = Conn.CreateCommand();
-            cmd.CommandText = "INSERT INTO todos(created_utc, text) VALUES($c,$t); SELECT last_insert_rowid();";
+            cmd.CommandText = "INSERT INTO todos(created_utc, text, due_utc) VALUES($c,$t,$d); SELECT last_insert_rowid();";
             cmd.Parameters.AddWithValue("$c", DateTime.UtcNow.ToString("o"));
             cmd.Parameters.AddWithValue("$t", text);
+            cmd.Parameters.AddWithValue("$d", (object?)dueUtc ?? DBNull.Value);
             return (long)(cmd.ExecuteScalar() ?? 0L);
         }
     }
@@ -23,10 +24,37 @@ public sealed partial class Db
         {
             var list = new List<TodoItem>();
             using var cmd = Conn.CreateCommand();
-            cmd.CommandText = "SELECT id, text, done, created_utc FROM todos ORDER BY done, id DESC;";
+            // dated first (soonest up), then undated, done last — the agenda's natural read order
+            cmd.CommandText = "SELECT id, text, done, created_utc, due_utc FROM todos ORDER BY done, due_utc IS NULL, due_utc, id DESC;";
             using var r = cmd.ExecuteReader();
-            while (r.Read()) list.Add(new TodoItem(r.GetInt64(0), r.GetString(1), r.GetInt64(2) != 0, r.GetString(3)));
+            while (r.Read()) list.Add(new TodoItem(r.GetInt64(0), r.GetString(1), r.GetInt64(2) != 0, r.GetString(3),
+                                                   r.IsDBNull(4) ? null : r.GetString(4)));
             return list;
+        }
+    }
+
+    /// <summary>Snooze: push the due time forward and re-arm (fired=0) so it fires again.</summary>
+    public bool SnoozeReminder(long id, string newDueUtc)
+    {
+        lock (_gate)
+        {
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = "UPDATE reminders SET due_utc=$d, fired=0 WHERE id=$id;";
+            cmd.Parameters.AddWithValue("$d", newDueUtc);
+            cmd.Parameters.AddWithValue("$id", id);
+            return cmd.ExecuteNonQuery() > 0;
+        }
+    }
+
+    public Reminder? GetReminder(long id)
+    {
+        lock (_gate)
+        {
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = "SELECT id, due_utc, text, fired FROM reminders WHERE id=$id;";
+            cmd.Parameters.AddWithValue("$id", id);
+            using var r = cmd.ExecuteReader();
+            return r.Read() ? new Reminder(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetInt64(3) != 0) : null;
         }
     }
     public bool SetTodoDone(long id, bool done)

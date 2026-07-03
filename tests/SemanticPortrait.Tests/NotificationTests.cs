@@ -33,8 +33,10 @@ public class NotificationTests : IDisposable
     {
         public List<(string Tag, string Group, DateTimeOffset When, string Title, string Body, string Arg)> Scheduled = new();
         public List<(string Tag, string Group)> Cancelled = new();
-        public Task ScheduleAsync(string tag, string group, DateTimeOffset whenUtc, string title, string body, string argument)
-        { Scheduled.Add((tag, group, whenUtc, title, body, argument)); return Task.CompletedTask; }
+        public List<IReadOnlyList<(string Label, string Argument)>?> Buttons = new();   // parallel to Scheduled
+        public Task ScheduleAsync(string tag, string group, DateTimeOffset whenUtc, string title, string body, string argument,
+            IReadOnlyList<(string Label, string Argument)>? buttons = null)
+        { Scheduled.Add((tag, group, whenUtc, title, body, argument)); Buttons.Add(buttons); return Task.CompletedTask; }
         public void Cancel(string tag, string group) { Cancelled.Add((tag, group)); }
     }
 
@@ -150,5 +152,58 @@ public class NotificationTests : IDisposable
         Assert.Contains("cancelled", res);
         var c = Assert.Single(sched.Cancelled);
         Assert.Equal(rid.ToString(), c.Tag);
+    }
+
+    [Fact]
+    public async Task Discreet_mode_forces_generic_toast_without_asking_the_classifier()
+    {
+        var db = NewDb();
+        var id = db.AddReminder(DateTime.UtcNow.AddHours(1).ToString("o"), "collect the test results");
+        var sched = new FakeScheduler();
+        NotificationService.Discreet = true;
+        try
+        {
+            // classifier would say NON-private — discreet must override and never even ask
+            await Svc(db, "{\"private\": false}", sched).ScheduleReminderAsync(id, "collect the test results", DateTimeOffset.UtcNow.AddHours(1));
+        }
+        finally { NotificationService.Discreet = false; }
+
+        var t = Assert.Single(sched.Scheduled);
+        Assert.DoesNotContain("test results", t.Body);
+        Assert.True(db.GetReminderPrivate(id));
+    }
+
+    [Fact]
+    public async Task Reminder_toasts_carry_snooze_and_done_buttons()
+    {
+        var db = NewDb();
+        var id = db.AddReminder(DateTime.UtcNow.AddHours(1).ToString("o"), "stretch");
+        var sched = new FakeScheduler();
+        await Svc(db, "{\"private\": false}", sched).ScheduleReminderAsync(id, "stretch", DateTimeOffset.UtcNow.AddHours(1));
+
+        var buttons = Assert.Single(sched.Buttons);
+        Assert.NotNull(buttons);
+        Assert.Equal(3, buttons!.Count);
+        Assert.Contains(buttons, b => b.Argument == $"snooze:reminder:{id}:15");
+        Assert.Contains(buttons, b => b.Argument == $"snooze:reminder:{id}:60");
+        Assert.Contains(buttons, b => b.Argument == $"done:reminder:{id}");
+    }
+
+    [Fact]
+    public void Snooze_rearms_a_fired_reminder_at_the_new_time()
+    {
+        var db = NewDb();
+        var id = db.AddReminder(DateTime.UtcNow.AddMinutes(-5).ToString("o"), "water the plants");
+        db.MarkReminderFired(id);
+        Assert.Empty(db.DueReminders(DateTime.UtcNow));            // fired -> silent
+
+        var newDue = DateTime.UtcNow.AddMinutes(15).ToString("o");
+        Assert.True(db.SnoozeReminder(id, newDue));
+
+        var rem = db.GetReminder(id);
+        Assert.NotNull(rem);
+        Assert.False(rem!.Fired);                                   // re-armed
+        Assert.Equal(newDue, rem.DueUtc);
+        Assert.Single(db.DueReminders(DateTime.UtcNow.AddMinutes(20)));   // fires again at the new time
     }
 }

@@ -7,8 +7,11 @@ namespace SemanticPortrait.Core;
 /// </summary>
 public interface IToastScheduler
 {
-    /// <summary>Schedule a toast for whenUtc. (tag, group) identify it for cancellation.</summary>
-    Task ScheduleAsync(string tag, string group, DateTimeOffset whenUtc, string title, string body, string argument);
+    /// <summary>Schedule a toast for whenUtc. (tag, group) identify it for cancellation.
+    /// <paramref name="buttons"/>: optional action buttons; each carries its own activation
+    /// argument (routed through the same activation pipeline as a body click).</summary>
+    Task ScheduleAsync(string tag, string group, DateTimeOffset whenUtc, string title, string body, string argument,
+        IReadOnlyList<(string Label, string Argument)>? buttons = null);
 
     /// <summary>Cancel a previously scheduled toast. No-op if not found / not supported.</summary>
     void Cancel(string tag, string group);

@@ -254,6 +254,11 @@
                     <span>@(_respectMotion ? "🚶" : "✨")</span>
                     @(_respectMotion ? "Animations: respect OS" : "Animations: always on")
                 </button>
+                <button class="sp-menu-item" @onclick="ToggleDiscreet"
+                        title="Discreet: every Windows notification shows a generic line — nothing personal on the lock screen, ever.">
+                    <span>@(_discreet ? "🕶" : "👁")</span>
+                    @(_discreet ? "Toasts: always discreet" : "Toasts: smart privacy")
+                </button>
                 <div class="sp-menu-sep"></div>
                 @if (!_hideCosts)
                 {

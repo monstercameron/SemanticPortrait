@@ -39,6 +39,11 @@ public sealed class NotificationService
     /// no toast over the window the user is already looking at.</summary>
     public static readonly TimeSpan ToastGrace = TimeSpan.FromSeconds(90);
 
+    /// <summary>User setting (⋯ menu): when true, EVERY toast shows the generic placeholder —
+    /// no classification call, nothing personal ever crosses to the OS. Synced from Preferences
+    /// by the UI at startup and on toggle.</summary>
+    public static volatile bool Discreet;
+
     /// <summary>Where the OS toast should actually fire for a given due time.</summary>
     public static DateTimeOffset ToastTimeFor(DateTimeOffset dueUtc)
     {
@@ -53,7 +58,9 @@ public sealed class NotificationService
     /// <summary>Classify + schedule the OS toast for a reminder. Safe to call fire-and-forget.</summary>
     public async Task ScheduleReminderAsync(long reminderId, string text, DateTimeOffset dueUtc, CancellationToken ct = default)
     {
-        bool isPrivate = await ClassifyPrivateAsync(text, ct);
+        // Discreet mode short-circuits the classifier: nothing personal ever leaves, and no
+        // provider call is spent deciding.
+        bool isPrivate = Discreet || await ClassifyPrivateAsync(text, ct);
         try { if (_db.IsOpen) _db.SetReminderPrivate(reminderId, isPrivate); } catch { }
 
         // Locked-screen safety: only non-private text crosses into the OS notification platform.
@@ -62,7 +69,13 @@ public sealed class NotificationService
         var tag = reminderId.ToString();
         try
         {
-            await _toasts.ScheduleAsync(tag, ReminderGroup, ToastTimeFor(dueUtc), title, body, $"reminder:{reminderId}");
+            await _toasts.ScheduleAsync(tag, ReminderGroup, ToastTimeFor(dueUtc), title, body, $"reminder:{reminderId}",
+                buttons: new[]
+                {
+                    ("Snooze 15m", $"snooze:reminder:{reminderId}:15"),
+                    ("Snooze 1h",  $"snooze:reminder:{reminderId}:60"),
+                    ("Done",       $"done:reminder:{reminderId}"),
+                });
         }
         catch { /* OS scheduling is best-effort; the in-app feed still works */ }
     }
@@ -76,7 +89,7 @@ public sealed class NotificationService
     /// as reminders: only non-private text crosses to the locked screen).</summary>
     public async Task SchedulePredictionAsync(long predictionId, string claim, DateTimeOffset dueUtc, CancellationToken ct = default)
     {
-        bool isPrivate = await ClassifyPrivateAsync(claim, ct);
+        bool isPrivate = Discreet || await ClassifyPrivateAsync(claim, ct);
         var body = isPrivate ? "A prediction is due — unlock to score it" : $"Prediction due: {claim}";
         try
         {

@@ -92,6 +92,23 @@ public class UpcomingTests : IDisposable
     }
 
     [Fact]
+    public void Dated_todos_join_the_day_groups_undated_trail_below()
+    {
+        var now = DateTime.UtcNow;
+        var datedId = _db.AddTodo("file the tax extension", Iso(now.AddHours(2)));
+        var freeId = _db.AddTodo("clean the garage");
+
+        var agenda = _tools.BuildUpcoming(14);
+        Assert.Contains($"[todo #{datedId}]", agenda);
+        Assert.Contains("file the tax extension", agenda);
+        // the dated one lives in its day group, NOT duplicated in the undated section
+        var openIdx = agenda.IndexOf("OPEN TODOS (no date):");
+        Assert.True(openIdx > 0);
+        Assert.DoesNotContain("file the tax extension", agenda[openIdx..]);
+        Assert.Contains($"[todo #{freeId}]", agenda[openIdx..]);
+    }
+
+    [Fact]
     public void Tool_is_wired_and_executes()
     {
         Assert.True(_tools.Handles("upcoming"));

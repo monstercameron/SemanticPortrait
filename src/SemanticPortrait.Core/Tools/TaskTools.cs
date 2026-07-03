@@ -21,8 +21,12 @@ public sealed class TaskTools
     public IReadOnlyList<object> Specs => new object[]
     {
         new { type = "function", name = "add_todo",
-              description = "Add an item to the user's todo list when they say they need/want to do something.",
-              parameters = Obj(new[]{"text"}, ("text", "string", "The task.")) },
+              description = "Add an item to the user's todo list when they say they need/want to do something. " +
+                            "If it has a natural deadline or target day, pass 'due' so it shows up on their agenda " +
+                            "— but a todo with a due date is NOT a reminder (no proactive ping); use set_reminder " +
+                            "when they should be actively reminded.",
+              parameters = Obj(new[]{"text"}, ("text", "string", "The task."),
+                               ("due", "string", "Optional ISO 8601 due date/time.")) },
         new { type = "function", name = "list_todos",
               description = "List the user's todos (open + done).",
               parameters = Obj(Array.Empty<string>()) },
@@ -61,12 +65,29 @@ public sealed class TaskTools
                 case "add_todo":
                     var tt = Str(r, "text");
                     if (string.IsNullOrWhiteSpace(tt)) return Task.FromResult("error: 'text' required.");
-                    return Task.FromResult($"todo #{_db.AddTodo(tt!)} added");
+                    string? dueIso = null;
+                    var dueRaw = Str(r, "due");
+                    if (!string.IsNullOrWhiteSpace(dueRaw))
+                    {
+                        if (!DateTime.TryParse(dueRaw, null, System.Globalization.DateTimeStyles.RoundtripKind, out var tdt))
+                            return Task.FromResult("error: 'due' must be ISO 8601.");
+                        dueIso = tdt.ToUniversalTime().ToString("o");
+                    }
+                    var newTodo = _db.AddTodo(tt!, dueIso);
+                    return Task.FromResult(dueIso is null
+                        ? $"todo #{newTodo} added"
+                        : $"todo #{newTodo} added, due {DateTime.Parse(dueIso, null, System.Globalization.DateTimeStyles.RoundtripKind).ToLocalTime():MMM d}");
                 case "list_todos":
                     var todos = _db.ListTodos();
                     if (todos.Count == 0) return Task.FromResult("(no todos)");
                     var sb = new StringBuilder();
-                    foreach (var t in todos) sb.AppendLine($"- #{t.Id} [{(t.Done ? "x" : " ")}] {t.Text}");
+                    foreach (var t in todos)
+                    {
+                        var due = t.DueUtc is { } d
+                                  && DateTime.TryParse(d, null, System.Globalization.DateTimeStyles.RoundtripKind, out var dd)
+                            ? $" (due {dd.ToLocalTime():MMM d})" : "";
+                        sb.AppendLine($"- #{t.Id} [{(t.Done ? "x" : " ")}] {t.Text}{due}");
+                    }
                     return Task.FromResult(sb.ToString().TrimEnd());
                 case "complete_todo":
                     return Task.FromResult(TryId(r, out var cid) && _db.SetTodoDone(cid, true)
@@ -134,6 +155,10 @@ public sealed class TaskTools
         foreach (var p in _db.GetPredictions().Where(p => p.ResolvedUtc is null))
             if (P(p.DueUtc) is { } d && d <= endUtc)
                 dated.Add((d, $"[prediction #{p.Id}] resolves {When(d)} — {p.Claim}"));
+        // Dated todos join the day groups (a deadline IS agenda); undated ones trail below.
+        foreach (var t in _db.ListTodos().Where(t => !t.Done && t.DueUtc is not null))
+            if (P(t.DueUtc) is { } d && d <= endUtc)
+                dated.Add((d, $"[todo #{t.Id}] due {When(d)} — {t.Text}"));
 
         var sb = new StringBuilder();
         void Group(string title, Func<DateTime, bool> pick)
@@ -152,7 +177,7 @@ public sealed class TaskTools
         Group("THIS WEEK:", d => d >= nowUtc && LocalDay(d) > todayLocal.AddDays(1) && LocalDay(d) <= todayLocal.AddDays(7));
         Group($"LATER (within {horizonDays} days):", d => d >= nowUtc && LocalDay(d) > todayLocal.AddDays(7));
 
-        var open = _db.ListTodos().Where(t => !t.Done).ToList();
+        var open = _db.ListTodos().Where(t => !t.Done && t.DueUtc is null).ToList();
         if (open.Count > 0)
         {
             sb.AppendLine("OPEN TODOS (no date):");

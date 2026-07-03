@@ -239,11 +239,50 @@ public partial class Home
         }
     }
 
+    /// <summary>Snooze from a toast button: push the due time, re-arm, reschedule the OS toast,
+    /// and quiet the drawer row. One soft sys line in-thread — no agent nudge (the user already
+    /// decided; a re-pitch would be noise).</summary>
+    private async Task SnoozeReminderFromToast(long id, int minutes)
+    {
+        var rem = Database.GetReminder(id);
+        if (rem is null) return;
+        var newDue = DateTime.UtcNow.AddMinutes(minutes);
+        Database.SnoozeReminder(id, newDue.ToString("o"));
+        Notify.CancelReminder(id);   // replace any still-scheduled toast for the old time
+        await Notify.ScheduleReminderAsync(id, rem.Text, new DateTimeOffset(newDue, TimeSpan.Zero));
+        var note = Notify.List().FirstOrDefault(x => x.RefType == "reminder" && x.RefId == id);
+        if (note is not null) { Database.MarkNotificationRead(note.Id); Notify.MarkSurfaced(note.Id); }
+        _messages.Add(new() { Role = "sys", Text = $"⏰ snoozed — back at {newDue.ToLocalTime():h:mm tt}" });
+        RefreshNotifs(); _scrollDown = true; StateHasChanged();
+    }
+
     /// <summary>Route a toast activation argument (e.g. "reminder:123") to the right surface.</summary>
     private async Task HandleToastActivation(string arg)
     {
         // Never bypass the lock: stash and process after unlock.
         if (_locked || _configuring || !Database.IsOpen) { _pendingToastArg = arg; return; }
+
+        // Toast BUTTONS: snooze pushes the due time and re-arms; Done just puts it to rest.
+        // Both are quiet actions — no agent nudge, the user already made their decision.
+        if (arg.StartsWith("snooze:reminder:", StringComparison.Ordinal))
+        {
+            var parts = arg.Split(':');
+            if (parts.Length == 4 && long.TryParse(parts[2], out var sid) && int.TryParse(parts[3], out var mins))
+                await SnoozeReminderFromToast(sid, mins);
+            return;
+        }
+        if (arg.StartsWith("done:reminder:", StringComparison.Ordinal))
+        {
+            if (long.TryParse(arg["done:reminder:".Length..], out var did))
+            {
+                Database.MarkReminderFired(did);
+                Notify.CancelReminder(did);
+                var note = Notify.List().FirstOrDefault(x => x.RefType == "reminder" && x.RefId == did);
+                if (note is not null) { Database.MarkNotificationRead(note.Id); Notify.MarkSurfaced(note.Id); }
+                RefreshNotifs(); StateHasChanged();
+            }
+            return;
+        }
 
         foreach (var kind in new[] { "reminder", "prediction" })
         {

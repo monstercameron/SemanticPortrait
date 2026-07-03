@@ -18,6 +18,14 @@ public partial class Home
     private bool _hideCosts = Microsoft.Maui.Storage.Preferences.Default.Get("hide_costs", false);
     // when true, honor the OS "reduce motion" setting; default off so animations always play
     private bool _respectMotion = Microsoft.Maui.Storage.Preferences.Default.Get("respect_motion", false);
+    // Discreet toasts: force EVERY OS toast to the generic placeholder (skip smart classification).
+    private bool _discreet = Microsoft.Maui.Storage.Preferences.Default.Get("discreet_toasts", false);
+    private void ToggleDiscreet()
+    {
+        _discreet = !_discreet;
+        Microsoft.Maui.Storage.Preferences.Default.Set("discreet_toasts", _discreet);
+        NotificationService.Discreet = _discreet;
+    }
 
     private string _draft = "";
     private bool _busy;
@@ -160,6 +168,7 @@ public partial class Home
     protected override async Task OnInitializedAsync()
     {
         _provider = Ai.DisplayName;
+        NotificationService.Discreet = _discreet;   // sync the Core-side gate with the saved setting
         ToastActivation.Activated += OnToastActivated;
         if (ToastActivation.PendingArg is { } pendingArg) _pendingToastArg = pendingArg;   // cold-start click
 
