@@ -120,4 +120,48 @@ public class FingerprintTests
         Assert.NotNull(vm.Fp);
         Assert.Equal(7, vm.Fp!.Channels.Count);
     }
+
+    /// <summary>The backlog's "comparison study", honestly scoped as a SYNTHETIC check: two
+    /// differently-shaped personas must wear visibly different skies. (Whether real humans
+    /// cluster this way still needs real humans — this proves the channels CAN separate.)</summary>
+    [Fact]
+    public void Synthetic_personas_diverge_visibly()
+    {
+        // Persona A — inward-shaped: sparse ties, one tight cluster, low fire, negative lean.
+        var a = M(
+            new[]
+            {
+                N(1, "wound", salience: 0.8, centrality: 0.9, valence: -0.6, volatility: 0.5),
+                N(2, "distortion", salience: 0.7, centrality: 0.2, valence: -0.5),
+                N(3, "mind", salience: 0.4, centrality: 0.2, valence: -0.2),
+                N(4, "connection", salience: 0.2, centrality: 0.1, valence: -0.3),
+                N(5, "mind", salience: 0.2, centrality: 0.1, valence: -0.1),
+            },
+            new[] { E(1, 1, 2), E(2, 1, 3) });
+
+        // Persona B — outward-shaped: dense weave, several communities, high fire, positive lean.
+        var b = M(
+            new[]
+            {
+                N(1, "fire", salience: 0.9, centrality: 0.5, valence: 0.7),
+                N(2, "joy", salience: 0.8, centrality: 0.5, valence: 0.6),
+                N(3, "connection", salience: 0.7, centrality: 0.5, valence: 0.5),
+                N(4, "connection", salience: 0.7, centrality: 0.5, valence: 0.6),
+                N(5, "fire", salience: 0.6, centrality: 0.5, valence: 0.4),
+                N(6, "connection", salience: 0.5, centrality: 0.5, valence: 0.5),
+            },
+            new[] { E(1, 1, 2), E(2, 2, 3), E(3, 3, 4), E(4, 4, 5), E(5, 5, 6), E(6, 6, 1), E(7, 1, 3), E(8, 2, 4), E(9, 3, 5), E(10, 1, 4), E(11, 2, 5), E(12, 4, 6) });
+
+        var fa = FingerprintMetrics.Compute(a);
+        var fb = FingerprintMetrics.Compute(b);
+
+        Assert.True(fb["breadth"] - fa["breadth"] > 0.25, $"breadth: {fa["breadth"]} vs {fb["breadth"]}");
+        Assert.True(fb["warmth"] - fa["warmth"] > 0.4, $"warmth: {fa["warmth"]} vs {fb["warmth"]}");
+        Assert.True(fb["tint"] - fa["tint"] > 0.3, $"tint: {fa["tint"]} vs {fb["tint"]}");
+        Assert.True(fa["motion"] - fb["motion"] > 0.15, $"motion: {fa["motion"]} vs {fb["motion"]}");
+
+        // aggregate separation across all channels — the two skies are unmistakably different
+        double l1 = fa.Channels.Zip(fb.Channels).Sum(p => Math.Abs(p.First.Value - p.Second.Value));
+        Assert.True(l1 > 1.2, $"aggregate channel separation too small: {l1}");
+    }
 }
