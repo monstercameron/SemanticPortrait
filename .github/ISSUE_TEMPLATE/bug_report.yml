@@ -1,0 +1,38 @@
+name: Bug report
+description: Something broke or behaves wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Never paste journal content, screenshots of your real data,
+        API keys, or anything personal** — describe the shape of the problem instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: From the release you installed (e.g. v0.1.0), and x64 or arm64.
+      placeholder: v0.1.0 arm64
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2

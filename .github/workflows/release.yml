@@ -1,0 +1,104 @@
+name: Release
+
+# Tag a version to cut a release with installers attached:
+#   git tag v0.1.0 && git push origin v0.1.0
+# Produces, per architecture (x64 + arm64): a portable .zip, a setup .exe (Inno, per-user,
+# no admin), and an .msi (WiX v5, per-user) — plus SHA256SUMS. All unsigned (see docs/INSTALL.md).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui-windows
+
+      - name: Version from tag
+        shell: pwsh
+        run: |
+          $v = $env:GITHUB_REF_NAME.TrimStart('v')
+          echo "VERSION=$v" >> $env:GITHUB_ENV
+          echo "MSI_VERSION=$($v.Split('-')[0])" >> $env:GITHUB_ENV   # MSI needs plain x.y.z
+
+      - name: Publish (self-contained, unpackaged)
+        shell: pwsh
+        run: >
+          dotnet publish src/SemanticPortrait.App/SemanticPortrait.App.csproj
+          -c Release -f net10.0-windows10.0.19041.0 -r win-${{ matrix.arch }}
+          -p:WindowsPackageType=None -p:Version=$env:VERSION
+          --self-contained true -o publish/win-${{ matrix.arch }} --nologo
+
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "publish/win-${{ matrix.arch }}/*" -DestinationPath "dist/SemanticPortrait-$env:VERSION-win-${{ matrix.arch }}-portable.zip"
+
+      - name: MSI (WiX v5)
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version "5.*"
+          wix build installer/Product.wxs -d Version=$env:MSI_VERSION -d "PublishDir=$PWD\publish\win-${{ matrix.arch }}" -arch ${{ matrix.arch }} -o "dist/SemanticPortrait-$env:VERSION-${{ matrix.arch }}.msi"
+
+      - name: Setup EXE (Inno Setup)
+        shell: pwsh
+        run: |
+          choco upgrade innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DVersion=$env:VERSION /DArch=${{ matrix.arch }} "/DPublishDir=$PWD\publish\win-${{ matrix.arch }}" installer\SemanticPortrait.iss
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-FileHash dist/* -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content -Encoding ascii "dist/SHA256SUMS-${{ matrix.arch }}.txt"
+          Get-Content "dist/SHA256SUMS-${{ matrix.arch }}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            ## Install
+            - **Setup EXE** (`-setup.exe`) — recommended: per-user install, no admin, Start-menu shortcut, clean uninstall.
+            - **MSI** — same install, for tooling/enterprise flows.
+            - **Portable zip** — unzip anywhere and run `SemanticPortrait.App.exe`.
+
+            Pick `x64` for most PCs, `arm64` for Windows-on-ARM (Snapdragon).
+
+            > **SmartScreen note:** these builds are not code-signed yet, so Windows may show
+            > "Windows protected your PC" on first run — click **More info → Run anyway**.
+            > Verify your download against `SHA256SUMS` first. Details in
+            > [docs/INSTALL.md](https://github.com/monstercameron/SemanticPortrait/blob/master/docs/INSTALL.md).

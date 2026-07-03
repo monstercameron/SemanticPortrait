@@ -63,3 +63,8 @@ docs/schema-v2.md
 docs/threat-model.md
 tools/SemanticPortrait.LiveLoop/runs/
 import-test/
+
+# release/build outputs
+dist/
+publish/
+publish-test/

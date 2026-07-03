@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      # The test project targets plain net10.0 (no MAUI workload needed) — keeps CI fast.
+      - name: Test
+        run: dotnet test tests/SemanticPortrait.Tests/SemanticPortrait.Tests.csproj --nologo
+
+  build-app:
+    name: App builds (win-x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install MAUI workload
+        run: dotnet workload install maui-windows
+      - name: Build
+        run: dotnet build src/SemanticPortrait.App/SemanticPortrait.App.csproj -c Release -f net10.0-windows10.0.19041.0 -r win-x64 --nologo

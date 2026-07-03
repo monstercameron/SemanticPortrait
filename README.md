@@ -1,8 +1,13 @@
 # SemanticPortrait
 
+[![CI](https://github.com/monstercameron/SemanticPortrait/actions/workflows/ci.yml/badge.svg)](https://github.com/monstercameron/SemanticPortrait/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/monstercameron/SemanticPortrait?include_prereleases)](https://github.com/monstercameron/SemanticPortrait/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 *One conversation, kept for a lifetime — and a quiet intelligence that learns who you are from it.*
 
 **▶ [Watch the demo — your journal as a living star constellation](https://www.youtube.com/watch?v=ug43K83CPk8)**
+ · **[Download the latest release](https://github.com/monstercameron/SemanticPortrait/releases)**
 
 Most journaling ends where it should begin: the words go down, and nothing reads them back.
 SemanticPortrait is the other half. You write to a single, unending thread, and a frontier
@@ -142,11 +147,20 @@ AES-256)** with a small vector index for semantic recall. Older turns fold into 
 summary; the detail never leaves the searchable store. Voice — on-device speech via the
 **Snapdragon NPU** (WhisperToMe for listening, Supertonic for speaking) — is the last mile.
 
+## Install
+
+Download the latest **setup EXE**, **MSI**, or **portable zip** (x64 / arm64) from
+[Releases](https://github.com/monstercameron/SemanticPortrait/releases) — per-user install, no
+admin needed. First-run SmartScreen notes and where your data lives:
+[`docs/INSTALL.md`](./docs/INSTALL.md).
+
 ## License
 
-MIT — see [`docs/LICENSE`](./docs/LICENSE).
+MIT — see [`LICENSE`](./LICENSE).
 
 ## More
 
 - **[▶ The demo video](https://www.youtube.com/watch?v=ug43K83CPk8)** — see the constellation live.
-- [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md) — install, deps, build, entry points, and how to add a feature.
+- [`docs/INSTALL.md`](./docs/INSTALL.md) — install it as a user.
+- [`docs/GETTING_STARTED.md`](./docs/GETTING_STARTED.md) — build it as a developer.
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) · [`SECURITY.md`](./SECURITY.md)
