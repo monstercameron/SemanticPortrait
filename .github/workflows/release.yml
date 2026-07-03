@@ -41,7 +41,7 @@ jobs:
         run: >
           dotnet publish src/SemanticPortrait.App/SemanticPortrait.App.csproj
           -c Release -f net10.0-windows10.0.19041.0 -r win-${{ matrix.arch }}
-          -p:WindowsPackageType=None -p:Version=$env:VERSION
+          -p:WindowsPackageType=None -p:Version=$env:MSI_VERSION -p:ApplicationDisplayVersion=$env:MSI_VERSION
           --self-contained true -o publish/win-${{ matrix.arch }} --nologo
 
       - name: Portable zip
