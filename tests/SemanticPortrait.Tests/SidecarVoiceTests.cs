@@ -50,6 +50,18 @@ public class SidecarVoiceTests
     }
 
     [Fact]
+    public async Task Voice_setup_tool_reports_missing_runtime_honestly()
+    {
+        var tools = new VoiceTools(new SidecarVoice(@"C:\does\not\exist\python.exe", @"C:\does\not\exist"));
+        Assert.True(tools.Handles("voice_setup"));
+        var res = await tools.ExecuteAsync("voice_setup", "{\"action\":\"status\"}");
+        Assert.Contains("not present", res);
+        // download without a runtime must not pretend to work
+        var dl = await tools.ExecuteAsync("voice_setup", "{\"action\":\"download\",\"confirmed\":true}");
+        Assert.Contains("not present", dl);
+    }
+
+    [Fact]
     public void Speech_prep_strips_markdown_and_keeps_link_labels()
     {
         var s = SidecarVoice.StripForSpeech("**Bold** and _soft_ with a [link label](https://x) and `code`\n\n```\nblock\n```\nend.");

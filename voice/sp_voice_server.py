@@ -10,6 +10,8 @@ Protocol: one JSON object per line, one JSON reply per line.
     {"op":"ping"}                                -> {"ok":true,"ready":true}
     {"op":"stt","wav":"C:\\u.wav"}               -> {"ok":true,"text":"..."}
     {"op":"tts","text":"...","out":"C:\\o.wav"}  -> {"ok":true,"out":"C:\\o.wav"}
+    {"op":"voice_status"}                        -> {"ok":true,"missing":[{"name":..,"mb":..}]}
+    {"op":"download_models"}                     -> streams {"progress":..} lines, then {"ok":..}
     {"op":"quit"}                                -> exits
 
 Models lazy-load on first use of each op (an STT-only session never loads TTS).
@@ -60,6 +62,34 @@ def _do_tts(text: str, out: str) -> dict:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(str(out_path), result.speech.samples, result.speech.sample_rate)
     return {"ok": True, "out": str(out_path)}
+
+
+def _do_voice_status() -> dict:
+    from whispertome.models.downloader import missing_groups
+
+    missing = [{"name": g.name, "mb": g.approx_mb} for g in missing_groups(_config)]
+    return {"ok": True, "missing": missing}
+
+
+def _do_download_models() -> dict:
+    """Download every missing model group, streaming progress lines between replies."""
+    from whispertome.models.downloader import download_group, missing_groups
+
+    for group in missing_groups(_config):
+        last = [-1.0]
+
+        def report(label: str, frac: float) -> None:
+            # throttle: one line per whole percent, so the pipe stays light
+            pct = int(frac * 100)
+            if pct > last[0]:
+                last[0] = pct
+                _reply({"progress": pct, "group": group.name, "label": label})
+
+        download_group(group, on_progress=report)
+    still = [g.name for g in missing_groups(_config)]
+    if still:
+        return {"ok": False, "error": f"still missing after download: {', '.join(still)}"}
+    return {"ok": True, "downloaded": True}
 
 
 def main() -> int:

@@ -167,6 +167,7 @@ public partial class Home
         "set_reminder"       => "⏰ set a reminder",
         "upcoming"           => "🗓 checked your agenda",
         "privacy_status"     => "🛡 checked what leaves this machine",
+        "voice_setup"        => "🎙 checked voice setup",
         "list_reminders"     => "⏰ checked your reminders",
         "cancel_reminder"    => "⏰ cancelled a reminder",
         "make_prediction"    => "🎯 logged a prediction",
@@ -252,6 +253,7 @@ public partial class Home
         // Exception: the intake counter is an operational write (worst-case poisoning = a wrong
         // count), offered ONLY while the intake is unfinished — it vanishes from specs after.
         var specs = Tools.ReadSpecs.Concat(Recall.MainSpecs).Concat(Tasks.Specs).Concat(Privacy.Specs)
+            .Concat(_voiceTools is { } vt ? vt.Specs : Array.Empty<object>())
             .Concat(Intake.IsComplete() ? Array.Empty<object>() : Intake.Specs)
             .Append(HandoffSpec).ToList();
         async Task<string> Exec(string name, string args)
@@ -281,6 +283,7 @@ public partial class Home
             }
             var result = Tasks.Handles(name) ? await Tasks.ExecuteAsync(name, args)
                 : Privacy.Handles(name) ? await Privacy.ExecuteAsync(name, args)
+                : _voiceTools is { } vtl && vtl.Handles(name) ? await vtl.ExecuteAsync(name, args)
                 : Intake.Handles(name) ? await Intake.ExecuteAsync(name, args)
                 : Recall.Handles(name) ? await Recall.ExecuteAsync(name, args)
                 : Memory.Handles(name) ? await Memory.ExecuteAsync(name, args)

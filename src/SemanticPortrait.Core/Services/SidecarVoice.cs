@@ -58,6 +58,49 @@ public sealed class SidecarVoice
         return output is not null && File.Exists(outWavPath) ? outWavPath : null;
     }
 
+    /// <summary>Which model groups are missing (name, approx MB). Null = runtime unavailable.</summary>
+    public async Task<IReadOnlyList<(string Name, int Mb)>?> VoiceStatusAsync(CancellationToken ct = default)
+    {
+        var reply = await ServerRequestAsync("{\"op\":\"voice_status\"}", ct);
+        if (reply is not { } el || !el.TryGetProperty("missing", out var missing)) return null;
+        var list = new List<(string, int)>();
+        foreach (var g in missing.EnumerateArray())
+            list.Add((g.GetProperty("name").GetString() ?? "?", g.GetProperty("mb").GetInt32()));
+        return list;
+    }
+
+    /// <summary>Download all missing model groups (streams progress). True on success. The
+    /// CALLER owns consent — this must never run without the user's explicit yes.</summary>
+    public async Task<bool> DownloadModelsAsync(Action<int, string>? onProgress = null, CancellationToken ct = default)
+    {
+        if (!Available) return false;
+        await _serverGate.WaitAsync(ct);
+        try
+        {
+            if (_server is null || _server.HasExited)
+                if (!await StartServerAsync(ct)) return false;
+            _lastUse = DateTime.UtcNow;
+            await _server!.StandardInput.WriteLineAsync("{\"op\":\"download_models\"}".AsMemory(), ct);
+            // progress lines stream until the final ok/fail — a ~770MB download needs patience
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(45);
+            while (DateTime.UtcNow < deadline)
+            {
+                _lastUse = DateTime.UtcNow;   // keep the idle reaper off an active download
+                var line = await ReadLineWithTimeoutAsync(_server.StandardOutput, TimeSpan.FromMinutes(3), ct);
+                if (line is null) break;
+                using var doc = System.Text.Json.JsonDocument.Parse(line);
+                if (doc.RootElement.TryGetProperty("ok", out var ok))
+                    return ok.GetBoolean();
+                if (doc.RootElement.TryGetProperty("progress", out var p))
+                    onProgress?.Invoke(p.GetInt32(), doc.RootElement.TryGetProperty("group", out var g) ? g.GetString() ?? "" : "");
+            }
+            KillServer();
+            return false;
+        }
+        catch (Exception e) { DevTrap.Report("voice-download", e); KillServer(); return false; }
+        finally { _serverGate.Release(); }
+    }
+
     // ---- persistent server: models load once, requests answer in ~1-3s instead of ~10s -----
     // The server exits on stdin EOF, so it can never outlive the app; an idle timer also shuts
     // it down after 5 minutes (fanless-laptop battery philosophy: warm is a lease, not a right).
