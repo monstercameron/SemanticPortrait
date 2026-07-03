@@ -52,6 +52,16 @@
             el.scrollTop = (window.__spChatAtBottom === false && window.__spChatScroll != null)
                 ? window.__spChatScroll : el.scrollHeight;
         };
+        // Dictation lands here: write the transcript INTO the composer so the user can review
+        // and edit before sending (Blazor's re-render alone can leave the textarea stale), and
+        // fire input so the binding stays in sync.
+        window.spSetComposer = (el, text) => {
+            if (!el) return;
+            el.value = text;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.focus();
+            el.selectionStart = el.selectionEnd = el.value.length;
+        };
         // Blazor calls this after its first paint: the splash lifts off the rendered app.
         window.spDismissBoot = () => {
             const v = document.getElementById('sp-boot-veil');

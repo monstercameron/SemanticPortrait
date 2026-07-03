@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using SemanticPortrait.App.Services;
 using SemanticPortrait.Core;
 
@@ -46,7 +47,9 @@ public partial class Home
             if (!string.IsNullOrWhiteSpace(text))
             {
                 _draft = string.IsNullOrWhiteSpace(_draft) ? text : _draft.TrimEnd() + " " + text;
-                _focusNext = true;
+                // Land the transcript VISIBLY in the composer for review/editing before send —
+                // Blazor's re-render alone can leave the textarea stale after an async handler.
+                try { await JS.InvokeVoidAsync("spSetComposer", _input, _draft); } catch { }
             }
             else _messages.Add(new() { Role = "sys", Text = "🎙 didn't catch anything — try again a little closer to the mic" });
         }

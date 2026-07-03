@@ -131,6 +131,12 @@ body {
 }
 .sp-mic:hover { border-color: var(--accent); }
 .sp-mic.rec { background: #c0392b; border-color: #c0392b; color: #fff; animation: sp-mic-pulse 1.4s ease-in-out infinite; }
+.sp-mic.busy { opacity: .75; cursor: progress; }
+.sp-mic-live {
+    align-self: flex-end; margin: 0 2px 12px; font-size: 11px; color: #e0655a;
+    animation: sp-live-fade 1.4s ease-in-out infinite;
+}
+@keyframes sp-live-fade { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
 @keyframes sp-mic-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,.45); } 50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); } }
 .sp-speak {
     background: transparent; border: none; cursor: pointer; font-size: 11px;

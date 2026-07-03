@@ -878,10 +878,17 @@
                               placeholder="Write a message…" rows="1"></textarea>
                     @if (_voiceAvailable)
                     {
-                        <button class="sp-mic @(_recording ? "rec" : "")" @onclick="ToggleMic" disabled="@_busy"
-                                title="@(_recording ? "Stop and transcribe" : _transcribing ? "Transcribing…" : "Dictate (on-device Whisper)")">
-                            @(_transcribing ? "…" : _recording ? "⏹" : "🎙")
+                        @* states: idle mic → LIVE red pulsing mic (click to finish) → hourglass while
+                           transcribing. The mic stays a mic while listening — a stop square read as "off". *@
+                        <button class="sp-mic @(_recording ? "rec" : "") @(_transcribing ? "busy" : "")"
+                                @onclick="ToggleMic" disabled="@(_busy || _transcribing)"
+                                title="@(_recording ? "Listening — click when you're done" : _transcribing ? "Transcribing on the NPU…" : "Dictate (on-device Whisper)")">
+                            @(_transcribing ? "⏳" : "🎙")
                         </button>
+                        @if (_recording)
+                        {
+                            <span class="sp-mic-live">listening…</span>
+                        }
                     }
                     <button class="sp-send-circle" @onclick="Send"
                             disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" title="Send">
