@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>SemanticPortrait</title>
+    <base href="/" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="SemanticPortrait.App.styles.css" />
+    <link rel="icon" href="data:,">
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app">Loading...</div>
+
+    <div id="blazor-error-ui" data-nosnippet>
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+
+    <script>
+        window.spScrollToBottom = (el) => { if (el) el.scrollTop = el.scrollHeight; };
+        // Chat scroll memory: the chat DOM is destroyed while the constellation is open, so the
+        // last position lives in JS globals. Restore puts the user back where they were — or at
+        // the latest message if they were already at (or near) the bottom.
+        window.spTrackScroll = (el) => {
+            if (!el || el.dataset.spTracked) return;
+            el.dataset.spTracked = "1";
+            el.addEventListener('scroll', () => {
+                window.__spChatScroll = el.scrollTop;
+                window.__spChatAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+            }, { passive: true });
+        };
+        // Deterministic capture at the moment of switching away (scroll events can be deferred
+        // while the window is occluded, so the listener alone can miss the final position).
+        window.spCaptureScroll = (el) => {
+            if (!el) return;
+            window.__spChatScroll = el.scrollTop;
+            window.__spChatAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+        };
+        window.spRestoreScroll = (el) => {
+            if (!el) return;
+            el.scrollTop = (window.__spChatAtBottom === false && window.__spChatScroll != null)
+                ? window.__spChatScroll : el.scrollHeight;
+        };
+    </script>
+    <script src="js/constellation.js"></script>
+    <script src="js/sigilexport.js"></script>
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+
+</body>
+
+</html>

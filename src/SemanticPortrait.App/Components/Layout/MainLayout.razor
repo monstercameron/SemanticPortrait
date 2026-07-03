@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+
+<SemanticPortrait.App.Components.CrashLoggingErrorBoundary>
+    <ChildContent>@Body</ChildContent>
+    <ErrorContent Context="ex">
+        <div style="padding:2rem; font-family:Consolas,monospace; color:#ff7a7a; overflow:auto; height:100%;">
+            <h3 style="margin-top:0;">Something broke during startup</h3>
+            @if (SemanticPortrait.App.Components.CrashLoggingErrorBoundary.ShowDetail)
+            {
+                <pre style="white-space:pre-wrap; font-size:12px;">@ex.ToString()</pre>
+                <p style="color:#999;">Full details also in AppData/crashlog.txt</p>
+            }
+            else
+            {
+                <p>Please restart the app. If this keeps happening, the crash log has details.</p>
+            }
+        </div>
+    </ErrorContent>
+</SemanticPortrait.App.Components.CrashLoggingErrorBoundary>

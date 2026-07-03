@@ -1,0 +1,34 @@
+/* Rebuild overlay (scoped to Home) — sits over the constellation canvas. */
+.sp-const-canvas { position: relative; }
+
+.sp-ro {
+    position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(60% 60% at 50% 50%, rgba(8,8,16,.55), rgba(8,8,16,.78));
+    backdrop-filter: blur(2px);
+}
+.sp-ro-card {
+    min-width: 260px; max-width: 360px; text-align: center; padding: 22px 24px;
+    background: rgba(18,18,28,.92); border: 1px solid rgba(255,255,255,.12); border-radius: 16px;
+    box-shadow: 0 16px 50px rgba(0,0,0,.55); color: #ececf0;
+}
+.sp-ro-orb {
+    width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, #ffd23f, #ff7a3d 55%, transparent 72%);
+    box-shadow: 0 0 24px 4px rgba(255,138,61,.55); animation: sp-ro-throb 1.3s ease-in-out infinite;
+}
+@keyframes sp-ro-throb { 0%,100% { transform: scale(.85); opacity: .8; } 50% { transform: scale(1.15); opacity: 1; } }
+.sp-ro-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.sp-ro-status { font-size: 13px; color: #b9b9c4; line-height: 1.5; min-height: 18px; }
+.sp-ro-meter {
+    font-size: 12px; color: #ffd23f; margin-top: 10px; font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+}
+.sp-ro-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.sp-ro-actions button { padding: 7px 14px; border-radius: 9px; font-size: 13px; cursor: pointer; }
+
+/* quiet only via the app's own motion toggle, never the raw OS flag (see app.css) */
+@media (prefers-reduced-motion: reduce) { .sp-rm .sp-ro-orb { animation: none; } }
+
+/* constellation header subtitle */
+.sp-const-sub { font-size: 11px; color: rgba(255,255,255,.42); margin-left: 10px; font-style: italic; }
+

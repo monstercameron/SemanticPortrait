@@ -1,0 +1,772 @@
+@using SemanticPortrait.Core.Constellation
+@implements IDisposable
+
+@*
+    Constellation v2 renderer — a PURE VIEW over a VisualModel (design/constellation.md). It knows
+    nothing about the DB: the host passes a VisualModel built from any IConstellationSource (live DB
+    or the sample fixture), which is the data↔design decoupling for rapid prototyping.
+    Aesthetic targets design/ mock: affect circumplex, glowing hex/circle/diamond nodes, inspector.
+*@
+
+<div class="cstage">
+    @* Zoom/pan drive the viewBox; LoD tiers disclose progressively (design §8): gestalt (zoomed
+       out — shapes only), mid (major labels), near (everything). Distance does the filtering. *@
+    <svg @ref="_svgEl" class="csky @LodClass @(_panning ? "panning" : "")"
+         viewBox="@F(_vbX) @F(_vbY) @F(_vbW) @F(VbH)" preserveAspectRatio="xMidYMid meet"
+         @onclick="() => { Sel = null; _neighbors.Clear(); }"
+         @onwheel="OnWheel" @onwheel:preventDefault="true"
+         @onpointerdown="OnPanStart" @onpointermove="OnPanMove"
+         @onpointerup="OnPanEnd" @onpointerleave="OnPanEnd">
+        <!-- affect axes — computed from the adaptive world so the crosshair stays on the
+             semantic midlines (hardcoded square-world coords sat off-center in a wide panel) -->
+        <line x1="@F(_spanX / 2)" y1="60" x2="@F(_spanX / 2)" y2="940" class="caxis" />
+        <line x1="60" y1="500" x2="@F(_spanX - 60)" y2="500" class="caxis" />
+        <text x="@F(_spanX / 2)" y="48" class="caxis-lbl" text-anchor="middle">HIGH ENERGY</text>
+        <text x="@F(_spanX / 2)" y="866" class="caxis-lbl" text-anchor="middle">LOW ENERGY</text>
+        <text x="70" y="446" class="caxis-lbl" text-anchor="start">NEGATIVE VALENCE</text>
+        <text x="@F(_spanX - 70)" y="446" class="caxis-lbl" text-anchor="end">POSITIVE VALENCE</text>
+        @* orbit guides: the radial layout made visible — inner ring = closest to the self *@
+        @foreach (var f in new[] { 0.315, 0.63, 0.94 })
+        {
+            <ellipse class="corbit" cx="@F(_spanX / 2)" cy="500"
+                     rx="@F(0.47 * f * (_spanX - 2 * Pad))" ry="@F(0.41 * f * (Span - 2 * Pad))" />
+        }
+        @* gestalt weather names — the far-zoom reading of the four affect skies + the unread rim *@
+        <text class="cquad" x="@F(_spanX * 0.76)" y="150" text-anchor="middle">DRIVE &amp; FLOW</text>
+        <text class="cquad" x="@F(_spanX * 0.24)" y="150" text-anchor="middle">ALARM &amp; FRICTION</text>
+        <text class="cquad" x="@F(_spanX * 0.24)" y="862" text-anchor="middle">WOUNDS &amp; WEIGHT</text>
+        <text class="cquad" x="@F(_spanX * 0.76)" y="862" text-anchor="middle">REST &amp; GROUND</text>
+        <text class="cquad crim" x="@F(_spanX * 0.66)" y="901" text-anchor="middle">· THE UNREAD ·</text>
+
+        @* ambient nebula washes — quieter than the per-group fog so cluster tints read as PLACES *@
+        <ellipse class="cwash" cx="@F(_spanX * 0.72)" cy="300" rx="@F(_spanX * 0.34)" ry="330"
+                 fill="#7c6bff" opacity="0.032" filter="url(#cfog)" />
+        <ellipse class="cwash" cx="@F(_spanX * 0.26)" cy="700" rx="@F(_spanX * 0.30)" ry="300"
+                 fill="#19d3ff" opacity="0.022" filter="url(#cfog)" />
+        <ellipse class="cwash" cx="@F(_spanX * 0.5)" cy="500" rx="@F(_spanX * 0.16)" ry="230"
+                 fill="#ff8a3d" opacity="0.024" filter="url(#cfog)" />
+
+        @* far-field micro-stars: uniform, ultra-faint — NO corner of the sky reads as flat black *@
+        @for (var fi = 0; fi < 220; fi++)
+        {
+            <circle class="cdust" cx="@F(Dust(fi * 3 + 901) * _spanX)" cy="@F(Dust(fi * 3 + 902) * 1000)"
+                    r="@F(0.55 + Dust(fi * 3 + 903) * 0.5)" style="opacity:0.19" />
+        }
+        @* cosmic dust: power-law sizes — mostly grains, a few bright motes; every fifth star
+           TWINKLES (opacity-only, staggered — bounded motion) *@
+        @for (var di = 0; di < 300; di++)
+        {
+            var dr = 0.4 + Math.Pow(Dust(di * 7 + 3), 3) * 2.6;
+            var tw = di % 5 == 0;
+            var dustStyle = $"opacity:{F(0.05 + Dust(di * 5 + 4) * (dr > 1.6 ? 0.42 : 0.24))}"
+                + (tw ? $"; --twd:{F(3.5 + Dust(di + 77) * 5)}s; animation-delay:-{F(Dust(di + 31) * 8)}s" : "");
+            <circle class="cdust @(tw ? "ctwinkle" : "")" cx="@F(Dust(di * 2 + 1) * _spanX)" cy="@F(Dust(di * 2 + 2) * 1000)"
+                    r="@F(dr)" style="@dustStyle" />
+        }
+
+        @if (Model is { } vm)
+        {
+            <defs>
+                <marker id="carrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L8,4 L0,8 z" fill="context-stroke" opacity="0.9" />
+                </marker>
+                @* nebula fog: hull shapes blurred into soft region clouds (design mocks' atmosphere) *@
+                <filter id="cfog" x="-60%" y="-60%" width="220%" height="220%">
+                    <feGaussianBlur stdDeviation="38" />
+                </filter>
+                @* ambivalence split-fill: light↔dark of the node's own hue — valence IS lightness,
+                   so a node holding both valences honestly wears both *@
+                @foreach (var an in vm.Nodes.Where(n => n.Ambivalent))
+                {
+                    <linearGradient id="amb-@an.Id" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="hsl(@F(an.FillH) @F(an.FillS * 100)% @F(Math.Min(0.8, an.FillL + 0.18) * 100)%)" />
+                        <stop offset="48%" stop-color="hsl(@F(an.FillH) @F(an.FillS * 100)% @F(Math.Min(0.8, an.FillL + 0.18) * 100)%)" />
+                        <stop offset="52%" stop-color="hsl(@F(an.FillH) @F(an.FillS * 100)% @F(Math.Max(0.15, an.FillL - 0.20) * 100)%)" />
+                        <stop offset="100%" stop-color="hsl(@F(an.FillH) @F(an.FillS * 100)% @F(Math.Max(0.15, an.FillL - 0.20) * 100)%)" />
+                    </linearGradient>
+                }
+            </defs>
+
+            @* asterisms: soft nebula fog per star group + a faint outline; names float at the
+               group's OUTER edge in its tint (mock typography), clear of the member labels *@
+            @foreach (var (h, hi) in vm.Hulls.Select((x, i) => (x, i)))
+            {
+                var lp = hi < _hullLabels.Count ? _hullLabels[hi].P : HullLabelPos(h);
+                var hb = HullBounds(h);
+                <g @key="@($"hull-{hi}")">
+                    @* sculpted nebula: a wide base + a tight brighter heart + an offset lighter
+                       wisp — one diffuse blob reads as a wash; layered blobs read as WEATHER *@
+                    <path class="chull-fog" fill="@h.TintHex" d="@HullPath(h)" filter="url(#cfog)" />
+                    @* the gas MOVES — slow drift per blob, staggered per group (subtle, 40s+) *@
+                    <ellipse class="chull-fog2 cgas" fill="@h.TintHex" filter="url(#cfog)"
+                             style="animation-delay:-@(hi * 7)s"
+                             cx="@F(hb.Cx + (Dust(hi * 11 + 5) - 0.5) * hb.W * 0.30)"
+                             cy="@F(hb.Cy + (Dust(hi * 13 + 6) - 0.5) * hb.H * 0.30)"
+                             rx="@F(Math.Max(70, hb.W * 0.30))" ry="@F(Math.Max(50, hb.H * 0.30))" />
+                    <ellipse class="chull-fog3 cgas2" fill="@Lighten(h.TintHex, 0.3)" filter="url(#cfog)"
+                             style="animation-delay:-@(hi * 11)s"
+                             cx="@F(hb.Cx - (Dust(hi * 7 + 2) - 0.5) * hb.W * 0.42)"
+                             cy="@F(hb.Cy - (Dust(hi * 5 + 9) - 0.5) * hb.H * 0.42)"
+                             rx="@F(Math.Max(46, hb.W * 0.17))" ry="@F(Math.Max(34, hb.H * 0.17))" />
+                    <path class="chull" stroke="@h.TintHex" fill="@h.TintHex" d="@HullPath(h)" />
+                    @if (h.Name.Length > 0)
+                    {
+                        @* luminous name, hue lives in the GLOW — dark hue ink on dark ground read as smudges *@
+                        <g><text class="chull-name" x="@F(lp.X)" y="@F(lp.Y)" text-anchor="middle"
+                                 style="fill:@Lighten(h.TintHex, 0.42); text-shadow: 0 0 22px @h.TintHex, 0 0 6px @h.TintHex, 0 0 3px rgba(0,0,0,.9)">@TitleCase(h.Name)</text></g>
+                    }
+                </g>
+            }
+
+            @* life on the strongest ties: a drifting spark on the few most ACTIVE real edges
+               (bounded — motion discipline; the webview has been frozen by animation floods) *@
+            var sparkIds = vm.Edges.Where(x => x.Id >= 0 && x.PulseAmp > 0.02)
+                .OrderByDescending(x => x.PulseAmp).Take(6).Select(x => x.Id).ToHashSet();
+            @foreach (var (e, ei) in vm.Edges.Select((x, i) => (x, i)))
+            {
+                if (!_pos.TryGetValue(e.Src, out var a) || !_pos.TryGetValue(e.Dst, out var b)) continue;
+                var isFocal = Sel is { } sf && (e.Src == sf.Id || e.Dst == sf.Id);
+                @* keys are NAMESPACED per element class: Blazor requires uniqueness across ALL
+                   siblings, so long edge-id 1 colliding with long node-id 1 crashed the diff *@
+                @* long threads whisper: stroke-opacity tapers with length (a full-canvas
+                   negative-valence line at full volume reads as an error slash, not a relation).
+                   stroke-opacity is independent of the keyframe-animated element opacity. *@
+                var eLen = Math.Sqrt(Math.Pow(b.X - a.X, 2) + Math.Pow(b.Y - a.Y, 2));
+                <polyline @key="@($"e{e.Id}")" points="@EdgePoints(a, b, e)"
+                          class="cedge @(e.Dashed ? "dashed" : "") @(e.PulseAmp > 0.02 ? "epulse" : "") @(Sel is null ? "" : isFocal ? "focal" : "dim")"
+                          marker-end="@(isFocal ? "url(#carrow)" : null)"
+                          stroke="@e.ColorHex" stroke-width="@F(e.Width)" pathLength="1"
+                          stroke-opacity="@F(isFocal ? 1 : Math.Clamp(0.85 - eLen / 1300.0, 0.15, 0.75))"
+                          style="animation-delay:@F(0.25 + ei * 0.03)s; --epamp:@F(e.PulseAmp); --epdur:@F(1 / Math.Max(0.15, e.PulseFreq))s" />
+                @if (sparkIds.Contains(e.Id) && (Sel is null || isFocal))
+                {
+                    <circle @key="@($"spark{e.Id}")" class="cspark" r="2.1" fill="@e.ColorHex">
+                        <animateMotion dur="@F(3.2 + ei % 3)s" repeatCount="indefinite" path="@EdgeMotionPath(a, b, e)" />
+                    </circle>
+                }
+            }
+            @foreach (var (nd, ni) in vm.Nodes.Select((x, i) => (x, i)))
+            {
+                var p = _pos[nd.Id];
+                var isCore = nd.Id == Encoding.SyntheticCoreId || nd.Category == "core";
+                // ~2.5% of canvas at max — design proportions; the core is unmistakably DOMINANT
+                var rPx = (11 + nd.Radius * 26) * (isCore ? 1.45 : 1.0);
+                var fill = Hsl(nd);
+                // Inside-labels only where the name actually FITS the shape (the mocks in-label
+                // their LARGE hexes only) — a name wider than its node reads as clutter, not design.
+                var major = isCore || ((nd.Radius >= 0.6 || !nd.IsCircle && nd.Radius >= 0.55)
+                                       && Pretty(nd.Label).Length * 6.8 <= rPx * 2.3);
+                var focalDim = Sel is { } se2 && se2.Id != nd.Id && !_neighbors.Contains(nd.Id);
+                @* nested groups so spawn(scale) / sway(translate) / pulse(scale) don't fight over transform *@
+                <g class="cspawn @(Sel?.Id == nd.Id ? "sel" : "") @(focalDim ? "dim" : "") @(nd.Quiet ? "qdim" : "")" @key="@($"n{nd.Id}")"
+                   style="opacity:@F(focalDim ? nd.Opacity * 0.25 : nd.Opacity); animation-delay:@F(ni * 0.05)s" @onclick:stopPropagation="true" @onclick="() => Select(nd)">
+                    @* alive-drift = a Lissajous loop: x and y are SEPARATE single-axis sines on
+                       different periods (nested layers), so velocity is continuous — no waypoint
+                       direction-snaps, which read as Brownian jitter instead of swaying *@
+                    <g class="csway" style="--swa:@F(0.7 + Math.Abs(nd.Id % 7) * 0.13)px; --swd:@F(26 + Math.Abs(nd.Id % 9) * 2.2)s; animation-delay:-@F(Math.Abs(nd.Id % 13) * 2.9)s">
+                     <g class="csway2" style="--swd2:@F(34 + Math.Abs(nd.Id % 7) * 2.6)s; animation-delay:-@F(Math.Abs(nd.Id % 11) * 3.7)s">
+                      <g class="@(nd.TremorAmp > 0.001 ? "ctremor" : "")"
+                         style="--tamp:@(F(nd.TremorAmp * 110))px; --tdur:@F(2.4 + nd.Id % 7 * 0.35)s">
+                        <g class="cpulse @(nd.PulseAmp > 0.01 ? "on" : "")"
+                           style="--amp:@F(nd.PulseAmp); --dur:@F(1 / Math.Max(0.2, nd.PulseFreq))s;
+                                  filter:@(nd.GlowWarmth > 0.05 ? $"drop-shadow(0 0 {8 + nd.GlowWarmth * 16:0}px {fill})" : "none")">
+                            <title>@nd.Why</title>
+                            @if (isCore)
+                            {
+                                @* the mock's Core Self starburst: four soft rays + a bright heart *@
+                                <path class="cburst" d="@Starburst(p, rPx * 3.1)" fill="@fill" />
+                            }
+                            @if (nd.GlowWarmth > 0.05 || major)
+                            {
+                                <circle class="caura" cx="@F(p.X)" cy="@F(p.Y)" r="@F(rPx * (isCore ? 2.1 : 1.7))" fill="@fill" />
+                            }
+                            @{ var shapeFill = nd.Ambivalent ? $"url(#amb-{nd.Id})" : fill; }
+                            @if (nd.IsCircle)
+                            {
+                                <circle cx="@F(p.X)" cy="@F(p.Y)" r="@F(rPx)" fill="@shapeFill" fill-opacity="@(nd.Ambivalent ? "0.34" : "0.22")"
+                                        stroke="@nd.StrokeHex" stroke-width="@(isCore ? "3.4" : "2")" stroke-dasharray="@(nd.Dashed ? "4 4" : null)" />
+                            }
+                            else
+                            {
+                                <polygon points="@Poly(p, nd.Sides, rPx)" fill="@shapeFill" fill-opacity="@(nd.Ambivalent ? "0.36" : "0.24")"
+                                         stroke="@nd.StrokeHex" stroke-width="2.5" stroke-dasharray="@(nd.Dashed ? "5 4" : null)" />
+                            }
+                            @* temporal depth: core rings — how often entries have revisited this *@
+                            @for (var ri = 1; ri <= nd.Rings; ri++)
+                            {
+                                <circle class="cring" cx="@F(p.X)" cy="@F(p.Y)" r="@F(rPx * (0.22 + 0.17 * ri))"
+                                        fill="none" stroke="@nd.StrokeHex" stroke-width="0.8" opacity="0.35" />
+                            }
+                        </g>
+                        @if (major)
+                        {
+                            @* mock presentation: name INSIDE the node, domain as a whispered subtitle *@
+                            <g>
+                                <text x="@F(p.X)" y="@F(p.Y - 2)" class="cnode-title" text-anchor="middle">@Pretty(nd.Label)</text>
+                                <text x="@F(p.X)" y="@F(p.Y + 12)" class="cnode-subtitle" text-anchor="middle"
+                                      style="fill:#f1f3f8">@(isCore ? "core self" : nd.Category)</text>
+                            </g>
+                        }
+                        else
+                        {
+                            var slp = _satLabelPos.TryGetValue(nd.Id, out var q) ? q : new Pt(p.X, p.Y + rPx + 14);
+                            <g><text x="@F(slp.X)" y="@F(slp.Y)" text-anchor="middle"
+                                  class="cnode-sat @(_satVisible.Contains(nd.Id) ? "" : "sat-crowded")">@Pretty(nd.Label)</text></g>
+                        }
+                      </g>
+                     </g>
+                    </g>
+                </g>
+            }
+        }
+    </svg>
+
+    <!-- shooting stars: three deterministic meteors on long offset cycles -->
+    <div class="cmeteor" style="left:14%; top:16%; --ang:28deg; --dx:360px; --dy:190px; animation-duration:17s; animation-delay:3s"></div>
+    <div class="cmeteor" style="left:66%; top:9%;  --ang:152deg; --dx:-400px; --dy:230px; animation-duration:26s; animation-delay:11s"></div>
+    <div class="cmeteor" style="left:36%; top:55%; --ang:18deg; --dx:430px; --dy:140px; animation-duration:31s; animation-delay:21s"></div>
+
+    <!-- zoom controls -->
+    <div class="czoom">
+        <button title="Zoom in" @onclick="() => Zoom(1 / 1.3)">＋</button>
+        <button title="Zoom out" @onclick="() => Zoom(1.3)">－</button>
+        <button title="Reset view" @onclick="ResetView">⌂</button>
+    </div>
+
+    <!-- legend (mock bottom-right) -->
+    @* a key DRAWS its strokes; collapsed to a chip so it can never collide with the sky *@
+    <div class="clegend">
+        <div class="clegend-title">?&nbsp; HOW TO READ</div>
+        <div class="clegend-body">
+        <div><span class="ck">SHAPE</span>
+            <svg class="ckex" viewBox="0 0 88 14"><polygon points="7,2 12,12 2,12" fill="none" stroke="#9a9aa3" stroke-width="1.4"/><polygon points="30,2 36,6 34,12 26,12 24,6" fill="none" stroke="#9a9aa3" stroke-width="1.4"/><circle cx="52" cy="7" r="5.4" fill="none" stroke="#9a9aa3" stroke-width="1.4"/></svg>
+            simple → complex → resolved</div>
+        <div><span class="ck">STATED</span>
+            <svg class="ckex" viewBox="0 0 88 14"><line x1="2" y1="7" x2="38" y2="7" stroke="#9a9aa3" stroke-width="1.6"/><line x1="48" y1="7" x2="86" y2="7" stroke="#9a9aa3" stroke-width="1.4" stroke-dasharray="4 3"/></svg>
+            vs inferred (nodes &amp; threads)</div>
+        <div><span class="ck">THREADS</span>
+            <svg class="ckex" viewBox="0 0 88 14"><line x1="2" y1="7" x2="30" y2="7" stroke="#9a9aa3" stroke-width="2.6"/><path d="M38 7 q5 -6 10 0 q5 6 10 0 q5 -6 10 0" fill="none" stroke="#9a9aa3" stroke-width="1.3"/></svg>
+            thick = sure · wavy = uncertain</div>
+        <div><span class="ck">LIGHT</span> pulse = alive now · glow = creative fire</div>
+        </div>
+    </div>
+
+    @if (Model is { } m2 && (m2.Nodes.Count == 0))
+    {
+        <div class="cempty">Your portrait fills in as you write.</div>
+    }
+    else if (Model is { } m3)
+    {
+        @* the living-system HUD (design 3): discrete stat CARDS — icon ring + value + word *@
+        <div class="chud">
+            @StatCard("✦", $"{m3.Nodes.Count(n => n.Id > 0)}", "stars", m3.LinkedFraction, $"{F0(m3.LinkedFraction * 100)}% linked", "#19d3ff")
+            @if (Stats is { } sg)
+            {
+                @StatCard("◌", Word3(sg.Density, "sparse", "growing", "woven"), "connection", sg.Density, "density", "#00e88f")
+                @StatCard("◎", Word3(sg.ContradictionLoad, "low", "moderate", "high"), "contradiction", sg.ContradictionLoad, "load", "#ff2e6e")
+                @StatCard("✧", CertaintyWord(m3), "certainty", CertaintyVal(m3), "confidence", "#7c6bff")
+            }
+            @if (MemorySpan is { } msp) { @StatCard("⧗", msp, "memory", null, "span", "#ff8a3d") }
+        </div>
+    }
+
+    @if (Sel is { } s)
+    {
+        <aside class="cinspect" @onclick:stopPropagation="true">
+            <div class="ci-head">
+                <span class="ci-dot" style="background:@Hsl(s)"></span>
+                <strong>@Pretty(s.Label)</strong>
+                <button class="ci-x" @onclick="() => Sel = null">✕</button>
+            </div>
+
+            @* the STORY leads — plain language about what this is in their life *@
+            @if (_story is null)
+            {
+                <div class="ci-story ci-story-loading">reading…</div>
+            }
+            else
+            {
+                <div class="ci-story">
+                    @foreach (var para in _story.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        <p>@para</p>
+                    }
+                </div>
+            }
+
+            @* the stats stay honest but folded — every visual remains explainable *@
+            <details class="ci-details">
+                <summary>how this is drawn</summary>
+                @* RAW metrics, not position: X/Y are rank-spread + relaxed for legibility, so
+                   deriving numbers from them would show plausible-but-wrong values *@
+                <div class="ci-row"><span>Valence</span><span class="ci-val">@F2(s.Valence)</span></div>
+                <div class="ci-bar"><i style="width:@F0((s.Valence + 1) * 50)%"></i></div>
+                <div class="ci-row"><span>Energy</span><span class="ci-val">@F2(s.Energy)</span></div>
+                <div class="ci-bar"><i style="width:@F0(s.Energy * 100)%"></i></div>
+                <div class="ci-row"><span>Form</span><span class="ci-val">@(s.IsCircle ? "circle · resolved" : $"{s.Sides}-gon")</span></div>
+                <div class="ci-row"><span>Confidence</span><span class="ci-val">@ConfidenceWord(s)</span></div>
+                <div class="ci-row"><span>Evidence</span><span class="ci-val">@(s.Rings switch { 0 => "unwritten", 1 => "a few entries", 2 => "revisited", _ => "long-standing" })</span></div>
+                <div class="ci-why">@s.Why</div>
+            </details>
+
+            @* related nodes as clickable chips (mock) — jump the selection along the web *@
+            @if (Model is { } vmm)
+            {
+                var peers = vmm.Edges.Where(e => e.Src == s.Id || e.Dst == s.Id)
+                    .Select(e => e.Src == s.Id ? e.Dst : e.Src).Distinct()
+                    .Select(pid => vmm.Nodes.Where(n => n.Id == pid).Cast<VisualNode?>().FirstOrDefault())
+                    .Where(n => n is not null).Select(n => n!.Value).Take(6).ToList();
+                if (peers.Count > 0)
+                {
+                    <div class="ci-sect">CONNECTED TO</div>
+                    <div class="ci-chips">
+                        @foreach (var pn in peers)
+                        {
+                            var peer = pn;
+                            <button class="ci-chip" style="border-color:@peer.StrokeHex"
+                                    @onclick="() => Select(peer)">@Pretty(peer.Label)</button>
+                        }
+                    </div>
+                }
+            }
+
+            <button class="ci-ask" @onclick="() => OnAsk.InvokeAsync(s)">💬 ask the agent about this</button>
+
+            @if (s.Dashed)
+            {
+                <button class="ci-reject" @onclick="() => DoReject(s.Id)">✋ You over-parsed me — remove this</button>
+            }
+        </aside>
+    }
+</div>
+
+@code {
+    [Parameter] public VisualModel? Model { get; set; }
+    [Parameter] public EventCallback<long> OnReject { get; set; }
+    /// <summary>Hand this node to the chat — the host switches views and pre-quotes it.</summary>
+    [Parameter] public EventCallback<VisualNode> OnAsk { get; set; }
+    /// <summary>Aggregate signature for the vital-signs HUD (already computed for the Sigil).</summary>
+    [Parameter] public SigilSignature? Stats { get; set; }
+    /// <summary>Host-computed span of the journal ("14 months"), for the HUD.</summary>
+    [Parameter] public string? MemorySpan { get; set; }
+    /// <summary>Host-supplied storyteller (RecallEngine.NarrateNodeAsync) — the view stays DB-free.</summary>
+    [Parameter] public Func<long, Task<string>>? Narrate { get; set; }
+
+    private VisualNode? Sel;
+    private string? _story;
+    private readonly Dictionary<long, Pt> _pos = new();
+    private readonly HashSet<long> _neighbors = new();
+    // The world's X span adapts to the CONTAINER's real aspect (measured on first render): a
+    // square world letterboxed ~40% of a 16:10 window as dead margin, and a hardcoded wide world
+    // would do the same, rotated, in a squarer panel. 1500 (≈ Encoding.WorldAspect) until measured.
+    private const double Pad = 90, Span = 1000;
+    private double _spanX = 1500;
+
+    // --- zoom/pan state: the viewBox is the camera -----------------------------
+    // FAST PATH: camera moves write the viewBox attribute via JS and SUPPRESS the Blazor render.
+    // A trackpad fires wheel events at 60–120Hz; re-diffing the whole SVG per event floods the
+    // renderer (observed live as a silent webview freeze). Full renders happen only when the LoD
+    // tier actually changes — that's the only camera move where the scene's content differs.
+    private ElementReference _svgEl;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private double _vbX = 0, _vbY = 0, _vbW = 1500;
+    private double VbH => _vbW * Span / _spanX;
+    private bool _panning;
+    private bool _suppressRender;
+    private double Zoomed => _spanX / _vbW;
+    private string LodClass => Zoomed switch { < 0.95 => "lod-far", < 1.8 => "lod-mid", _ => "lod-near" };
+
+    protected override bool ShouldRender()
+    {
+        if (!_suppressRender) return true;
+        _suppressRender = false;
+        return false;
+    }
+
+    /// <summary>Push the camera to the DOM without a Blazor render (unless the LoD tier moved).</summary>
+    private void ApplyCamera(string lodBefore)
+    {
+        ClampView();
+        _ = JS.InvokeVoidAsync("spSetViewBox", _svgEl, $"{F(_vbX)} {F(_vbY)} {F(_vbW)} {F(VbH)}");
+        _suppressRender = LodClass == lodBefore;
+    }
+
+    private void Zoom(double factor)
+    {
+        var before = LodClass;
+        var w = Math.Clamp(_vbW * factor, 0.24 * _spanX, 1.35 * _spanX);
+        var cx = _vbX + _vbW / 2; var cy = _vbY + VbH / 2;
+        _vbW = w; _vbX = cx - w / 2; _vbY = cy - VbH / 2;
+        ApplyCamera(before);
+    }
+
+    private void OnWheel(WheelEventArgs e)
+    {
+        // Pinch gestures arrive from Chromium as ctrl+wheel → zoom. A notchy mouse wheel
+        // (line-mode, or big pixel deltas with no X component) also zooms. Everything else is a
+        // trackpad two-finger scroll → pan, in both axes, natural direction.
+        if (e.CtrlKey) { Zoom(e.DeltaY > 0 ? 1.12 : 1 / 1.12); return; }
+        var mouseWheel = e.DeltaMode != 0 || (Math.Abs(e.DeltaX) < 0.01 && Math.Abs(e.DeltaY) >= 50);
+        if (mouseWheel) { Zoom(e.DeltaY > 0 ? 1.15 : 1 / 1.15); return; }
+
+        var scale = _vbW / 850.0;
+        _vbX += e.DeltaX * scale;
+        _vbY += e.DeltaY * scale;
+        ApplyCamera(LodClass);
+    }
+    private void OnPanStart(PointerEventArgs e) { if (e.Buttons == 1) _panning = true; }
+    private void OnPanEnd(PointerEventArgs e) => _panning = false;
+    private void OnPanMove(PointerEventArgs e)
+    {
+        if (!_panning || e.Buttons != 1) return;
+        // Movement arrives in CSS px; ~850px is the stage's typical rendered span — close enough
+        // for pan feel, and exactness doesn't matter (the camera clamps).
+        var scale = _vbW / 850.0;
+        _vbX -= e.MovementX * scale;
+        _vbY -= e.MovementY * scale;
+        ApplyCamera(LodClass);
+    }
+
+    private void ClampView()
+    {
+        // Geometry.ClampCameraAxis handles the viewport-wider-than-world case that made the
+        // naive Math.Clamp throw mid-wheel (unit-tested in Core).
+        _vbX = Geometry.ClampCameraAxis(_vbX, _vbW, _spanX);
+        _vbY = Geometry.ClampCameraAxis(_vbY, VbH, Span);
+    }
+
+    private void ResetView() { _vbX = _vbY = 0; _vbW = _spanX; Sel = null; _neighbors.Clear(); }
+
+    private DotNetObjectReference<ConstellationView>? _selfRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        // Measure the container's true aspect and rebuild the world to fill it — then KEEP
+        // watching: a measure taken mid-boot (or before a maximize) leaves the camera and the
+        // layout disagreeing, which renders as a cropped or letterboxed map until corrected.
+        await RemeasureAsync();
+        try
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("spWatchResize", _svgEl, _selfRef);
+        }
+        catch { /* resize watching is progressive enhancement */ }
+    }
+
+    [JSInvokable]
+    public async Task OnHostResized() => await RemeasureAsync();
+
+    private async Task RemeasureAsync()
+    {
+        try
+        {
+            var aspect = await JS.InvokeAsync<double>("spAspect", _svgEl);
+            if (aspect <= 0.1) return;
+            var spanX = Math.Clamp(Span * aspect, 700, 2400);
+            if (Math.Abs(spanX - _spanX) < 20) return;   // unchanged — don't churn the layout
+            _spanX = spanX;
+            _vbX = 0; _vbY = 0; _vbW = _spanX;           // reset the camera into the new world
+            RecomputePositions();
+            StateHasChanged();
+        }
+        catch { /* measuring is best-effort; the current world still renders */ }
+    }
+
+    public void Dispose()
+    {
+        try { _ = JS.InvokeVoidAsync("spUnwatchResize", _svgEl); } catch { }
+        _selfRef?.Dispose();
+    }
+
+    // --- focal layer: selection lights the 1-hop subgraph ----------------------
+    private void Select(VisualNode nd)
+    {
+        Sel = nd;
+        _neighbors.Clear();
+        if (Model is { } vm)
+            foreach (var e in vm.Edges)
+            {
+                if (e.Src == nd.Id) _neighbors.Add(e.Dst);
+                if (e.Dst == nd.Id) _neighbors.Add(e.Src);
+            }
+        _ = LoadStoryAsync(nd.Id);
+    }
+
+    private async Task LoadStoryAsync(long id)
+    {
+        _story = null;
+        if (Narrate is null) { _story = ""; return; }
+        try
+        {
+            var story = await Narrate(id);
+            if (Sel?.Id == id) { _story = story; StateHasChanged(); }   // ignore stale loads
+        }
+        catch { _story = ""; }
+    }
+
+    protected override void OnParametersSet() => RecomputePositions();
+
+    private readonly HashSet<long> _satVisible = new();
+    private readonly Dictionary<long, Pt> _satLabelPos = new();
+    private readonly List<(Pt P, double HalfW)> _hullLabels = new();
+
+    private void RecomputePositions()
+    {
+        _pos.Clear();
+        if (Model is { } vm)
+        {
+            foreach (var n in vm.Nodes)
+                _pos[n.Id] = new Pt(Pad + n.X * (_spanX - 2 * Pad), Pad + n.Y * (Span - 2 * Pad));
+            if (Sel is { } s && !vm.Nodes.Any(n => n.Id == s.Id)) { Sel = null; _neighbors.Clear(); }
+
+            // Whisper-tier label budget (mid zoom): most central names claim space first; a
+            // label that would overlap a claimed one drops until the user zooms in. A hidden
+            // label beats an overlapping one (critic round 2).
+            // ONE shared collision arena, strict priority: axis captions > territory names >
+            // satellite labels. Territory names claim FIRST; satellites dodge them below.
+            ResolveHullLabels(vm.Hulls);
+
+            _satVisible.Clear();
+            _satLabelPos.Clear();
+            // Every node's body is an OBSTACLE (with a standoff ring). A label doesn't give up
+            // when its default spot is blocked — it tries below, above, right, left (the mocks'
+            // trick for crowded stars); only a node with NO clear side drops at this zoom.
+            // Major-tier nodes always keep their name — an anonymous major is a broken promise.
+            var obstacles = vm.Nodes.Where(n => _pos.ContainsKey(n.Id))
+                .Select(n => (Id: n.Id, P: _pos[n.Id], R: 11 + n.Radius * 26 + 5)).ToList();
+            var claimed = new List<(double X, double Y, double W)>();
+            foreach (var n in vm.Nodes.OrderByDescending(n => n.Radius).ThenBy(n => n.Id))
+            {
+                if (!_pos.TryGetValue(n.Id, out var p)) continue;
+                var w = Pretty(n.Label).Length * 6.4 + 10;
+                var rN = 11 + n.Radius * 26;
+                var candidates = new[]
+                {
+                    new Pt(p.X, p.Y + rN + 14),
+                    new Pt(p.X, p.Y - rN - 8),
+                    new Pt(p.X + rN + 10 + w / 2, p.Y + 4),
+                    new Pt(p.X - rN - 10 - w / 2, p.Y + 4),
+                };
+                bool Free(Pt c) =>
+                    // never hang off the canvas edge (edge nodes clip their centered labels)
+                    c.X - w / 2 > 6 && c.X + w / 2 < _spanX - 6 && c.Y > 16 && c.Y < 992
+                    // padded label-vs-label: two long left-aligned labels 18px apart read as one
+                    // orphan two-line caption even when their boxes don't strictly touch (round 9)
+                    && !claimed.Any(cl => Math.Abs(cl.X - c.X) * 2 < cl.W + w + 22 && Math.Abs(cl.Y - c.Y) < 24)
+                    && !obstacles.Any(o => o.Id != n.Id
+                        && Math.Abs(o.P.X - c.X) < o.R + w / 2 - 10 && Math.Abs(o.P.Y - c.Y) < o.R + 4)
+                    // territory names claimed first — satellites keep off them (shared arena)
+                    && !_hullLabels.Any(hl => Math.Abs(hl.P.X - c.X) < hl.HalfW + w / 2 && Math.Abs(hl.P.Y - c.Y) < 26);
+                var spot = candidates.Cast<Pt?>().FirstOrDefault(c => Free(c!.Value));
+                // majors never drop — but a blocked major takes the LEAST-crowded side, not the
+                // default one (two blocked majors both defaulting below = a stacked two-line
+                // caption that belongs to no node; critic round 8)
+                if (spot is null && n.Radius >= 0.55)
+                    spot = candidates.OrderByDescending(c => claimed
+                        .Select(cl => Math.Pow(cl.X - c.X, 2) + Math.Pow((cl.Y - c.Y) * 3, 2))
+                        .DefaultIfEmpty(double.MaxValue).Min()).First();
+                if (spot is { } s2)
+                {
+                    var pinned2 = new Pt(Math.Clamp(s2.X, w / 2 + 6, _spanX - w / 2 - 6), s2.Y);
+                    _satVisible.Add(n.Id);
+                    _satLabelPos[n.Id] = pinned2;
+                    claimed.Add((pinned2.X, pinned2.Y, w));
+                }
+            }
+        }
+    }
+
+    private async Task DoReject(long id) { Sel = null; _neighbors.Clear(); await OnReject.InvokeAsync(id); }
+
+    // Invariant culture: a locale with decimal COMMAS would silently corrupt SVG attributes.
+    private static string Hsl(VisualNode n) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"hsl({n.FillH:0} {n.FillS * 100:0}% {n.FillL * 100:0}%)");
+    private static string F(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    private static string F0(double v) => v.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+    private static string F2(double v) => v.ToString("+0.00;-0.00;0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+    // deterministic pseudo-random for the static dust field (no Math.Random — layout stability)
+    private static double Dust(int i) { var v = Math.Sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.Floor(v); }
+
+    /// <summary>Mix a hex color toward white — luminous label ink while the hue lives in the glow.</summary>
+    private static string Lighten(string hex, double t)
+    {
+        if (hex.Length != 7 || hex[0] != '#') return hex;
+        int C(int o) => Convert.ToInt32(hex.Substring(o, 2), 16);
+        int L(int v) => (int)Math.Clamp(v + (255 - v) * t, 0, 255);
+        return $"#{L(C(1)):x2}{L(C(3)):x2}{L(C(5)):x2}";
+    }
+
+    private static string TitleCase(string s) => string.Join(" ",
+        s.Replace('-', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries)
+         .Select(w => w.Length > 1 ? char.ToUpperInvariant(w[0]) + w[1..] : w.ToUpperInvariant()));
+
+    private (double Cx, double Cy, double W, double H) HullBounds(VisualHull h)
+    {
+        var pts = h.Points.Select(p => new Pt(Pad + p.X * (_spanX - 2 * Pad), Pad + p.Y * (Span - 2 * Pad))).ToList();
+        double x0 = pts.Min(p => p.X), x1 = pts.Max(p => p.X), y0 = pts.Min(p => p.Y), y1 = pts.Max(p => p.Y);
+        return ((x0 + x1) / 2, (y0 + y1) / 2, Math.Max(1, x1 - x0), Math.Max(1, y1 - y0));
+    }
+
+    /// <summary>Group names float at the hull's OUTER edge — off the members, toward the rim.</summary>
+    private Pt HullLabelPos(VisualHull h)
+    {
+        double cx = _spanX / 2, cy = 500;
+        var pts = h.Points.Select(p => new Pt(Pad + p.X * (_spanX - 2 * Pad), Pad + p.Y * (Span - 2 * Pad))).ToList();
+        var far = pts.OrderByDescending(p => Math.Pow(p.X - cx, 2) + Math.Pow(p.Y - cy, 2)).First();
+        var dx = far.X - cx; var dy = far.Y - cy; var d = Math.Max(1, Math.Sqrt(dx * dx + dy * dy));
+        return new Pt(Math.Clamp(far.X + dx / d * 44, 70, _spanX - 70), Math.Clamp(far.Y + dy / d * 30, 40, 988));
+    }
+
+    /// <summary>Territory-name placement (claims FIRST in the shared arena — satellites dodge
+    /// these afterward): hull-perimeter walk avoiding sibling names, node glyphs, and axis
+    /// captions; least-bad fallback scored against all of them.</summary>
+    private void ResolveHullLabels(IReadOnlyList<VisualHull> hulls)
+    {
+        _hullLabels.Clear();
+        var result = new List<Pt>(hulls.Count);
+        foreach (var h in hulls)
+        {
+            var p = HullLabelPos(h);
+            if (h.Name.Length > 0)
+            {
+                bool Clashes(Pt q2) =>
+                    result.Where((q, i) => hulls[i].Name.Length > 0)
+                        .Any(q => Math.Abs(q.X - q2.X) < 230 && Math.Abs(q.Y - q2.Y) < 72)
+                    // NODE GLYPHS block names too — a territory title behind a diamond is as
+                    // broken as one over a caption (critic round 9)
+                    || (Model is { } mm && mm.Nodes.Any(n => _pos.TryGetValue(n.Id, out var nb)
+                        && Math.Abs(nb.X - q2.X) < 11 + n.Radius * 26 + 92
+                        && Math.Abs(nb.Y - q2.Y) < 11 + n.Radius * 26 + 16))
+                    // axis captions are chrome, not sky — group names keep clear of them
+                    || Math.Abs(q2.Y - 446) < 66 && (Math.Abs(q2.X - 170) < 260 || Math.Abs(q2.X - (_spanX - 170)) < 260);
+
+                // HULL-PERIMETER SLIDE: candidates are the hull's own vertices pushed slightly
+                // outward, tried outermost-first. A name can dodge along its border but can
+                // never leave its territory — a luminous name over the wrong region mislabels
+                // the map (critic round 6).
+                var pts = h.Points.Select(hp => new Pt(Pad + hp.X * (_spanX - 2 * Pad), Pad + hp.Y * (Span - 2 * Pad))).ToList();
+                double hcx = pts.Average(v => v.X), hcy = pts.Average(v => v.Y);
+                double ccx = _spanX / 2;
+                Pt Push(Pt v, double amt)
+                {
+                    var dx = v.X - hcx; var dy = v.Y - hcy; var d = Math.Max(1, Math.Sqrt(dx * dx + dy * dy));
+                    return new Pt(Math.Clamp(v.X + dx / d * amt, 70, _spanX - 70),
+                                  Math.Clamp(v.Y + dy / d * amt * 0.75, 40, 988));
+                }
+                // Perimeter walk: vertices AND edge midpoints, each tried outward and slightly
+                // inward — a rim hull whose outer vertices all clash still finds a spot ON its
+                // own territory instead of falling into the axis caption (Connection, round 8).
+                var mids = pts.Zip(pts.Skip(1).Append(pts[0]), (a2, b2) => new Pt((a2.X + b2.X) / 2, (a2.Y + b2.Y) / 2));
+                var cands = pts.Concat(mids)
+                    .OrderByDescending(v => Math.Pow(v.X - ccx, 2) + Math.Pow(v.Y - 500, 2))
+                    .SelectMany(v => new[] { Push(v, 36), Push(v, -52) })
+                    .ToList();
+                // Fallback scores against EVERYTHING the label must respect (other names AND the
+                // axis captions), not just sibling group names.
+                double Score(Pt c) => result.Where((q, i) => hulls[i].Name.Length > 0).Select(q => (q.X, q.Y))
+                    .Append((170.0, 446.0)).Append((_spanX - 170.0, 446.0))
+                    .Concat(Model is { } m2 ? m2.Nodes.Where(n => _pos.ContainsKey(n.Id))
+                        .Select(n => (_pos[n.Id].X, _pos[n.Id].Y)) : Enumerable.Empty<(double, double)>())
+                    .Select(q => Math.Pow(q.Item1 - c.X, 2) + Math.Pow((q.Item2 - c.Y) * 2, 2))
+                    .DefaultIfEmpty(double.MaxValue).Min();
+                p = cands.Any(c => !Clashes(c))
+                    ? cands.First(c => !Clashes(c))
+                    : cands.OrderByDescending(Score).First();
+            }
+            result.Add(p);
+            _hullLabels.Add((p, h.Name.Length > 0 ? TitleCase(h.Name).Length * 7.2 : 0));
+        }
+    }
+
+    private static string Word3(double v, string lo, string mid, string hi) => v < 0.33 ? lo : v < 0.66 ? mid : hi;
+
+    private static double CertaintyVal(VisualModel m)
+    {
+        var real = m.Nodes.Where(n => n.Id > 0).ToList();
+        return real.Count == 0 ? 0 : real.Average(n => Math.Clamp((n.Opacity - 0.35) / 0.65, 0, 1));
+    }
+
+    /// <summary>One vital-sign card: icon inside a progress ring (when a 0..1 value exists),
+    /// big value, whisper caption — the mocks' HUD pattern.</summary>
+    private static RenderFragment StatCard(string icon, string value, string caption, double? frac, string sub, string tint) => __builder =>
+    {
+        <div class="chud-card">
+            <svg class="chud-ring" viewBox="0 0 30 30">
+                <circle cx="15" cy="15" r="12" class="chud-ring-bg" />
+                @if (frac is { } fr)
+                {
+                    <circle cx="15" cy="15" r="12" class="chud-ring-fg" style="stroke:@tint"
+                            stroke-dasharray="@F(75.4 * Math.Clamp(fr, 0.02, 1)) 75.4" transform="rotate(-90 15 15)" />
+                }
+                <text x="15" y="19.5" text-anchor="middle" class="chud-ring-ico" style="fill:@tint">@icon</text>
+            </svg>
+            <div class="chud-txt"><b>@value</b><span>@caption · @sub</span></div>
+        </div>
+    };
+
+    private static string CertaintyWord(VisualModel m)
+    {
+        var real = m.Nodes.Where(n => n.Id > 0).ToList();
+        if (real.Count == 0) return "—";
+        var conf = real.Average(n => Math.Clamp((n.Opacity - 0.35) / 0.65, 0, 1));   // opacity encodes confidence
+        return Word3(conf, "tentative", "settling", "high");
+    }
+
+    private static string ConfidenceWord(VisualNode n) =>
+        Word3(Math.Clamp((n.Opacity - 0.35) / 0.65, 0, 1), "low — my inference", "moderate", "high — your words");
+
+    /// <summary>The wavy edge as an SMIL motion path, so a spark can ride the actual curve.</summary>
+    private static string EdgeMotionPath(Pt a, Pt b, VisualEdge e)
+    {
+        double len = Math.Sqrt(Math.Pow(b.X - a.X, 2) + Math.Pow(b.Y - a.Y, 2));
+        var pts = Geometry.WaveEdge(a, b, e.Frequency, e.Amplitude * Math.Min(len, 260) * 0.55, 12);
+        return "M " + string.Join(" L ", pts.Select(p => Fmt(p, ' ')));
+    }
+
+    /// <summary>Four soft rays for the core star (the mocks' Core Self treatment).</summary>
+    private static string Starburst(Pt c, double r)
+    {
+        var w = r * 0.055;
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"M {c.X} {c.Y - r} L {c.X + w} {c.Y} L {c.X} {c.Y + r} L {c.X - w} {c.Y} Z " +
+            $"M {c.X - r} {c.Y} L {c.X} {c.Y - w} L {c.X + r} {c.Y} L {c.X} {c.Y + w} Z");
+    }
+
+    /// <summary>Cover name: analyst labels are slugs ("feeling-vs-fact-separation") — display
+    /// them as human phrases. The raw label stays canonical everywhere else (joins, aliases).</summary>
+    private static string Pretty(string label)
+    {
+        var s = label.Replace('-', ' ').Replace('_', ' ');
+        while (s.Contains("  ")) s = s.Replace("  ", " ");
+        s = s.Trim();
+        return s.Length > 1 && char.IsLower(s[0]) ? char.ToUpperInvariant(s[0]) + s[1..] : s;
+    }
+
+    private static string Fmt(Pt p, char sep) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{p.X:0.#}{sep}{p.Y:0.#}");
+
+    private static string Poly(Pt c, int sides, double r)
+        => string.Join(" ", Geometry.RegularPolygon(sides, r, -Math.PI / 2, c).Select(v => Fmt(v, ',')));
+
+    private string HullPath(VisualHull h)
+    {
+        // Hull points arrive normalized 0..1 — scale into the same space as node positions.
+        var pts = h.Points.Select(p => new Pt(Pad + p.X * (_spanX - 2 * Pad), Pad + p.Y * (Span - 2 * Pad))).ToArray();
+        return "M " + string.Join(" L ", pts.Select(p => Fmt(p, ' '))) + " Z";
+    }
+
+    private Pt HullCentroid(VisualHull h) => new(
+        Pad + h.Points.Average(p => p.X) * (_spanX - 2 * Pad),
+        Pad + h.Points.Average(p => p.Y) * (Span - 2 * Pad));
+
+    private static string EdgePoints(Pt a, Pt b, VisualEdge e)
+    {
+        double len = Math.Sqrt(Math.Pow(b.X - a.X, 2) + Math.Pow(b.Y - a.Y, 2));
+        // Amplitude (0.04..0.14) is a FRACTION of edge length — the old /100 scaling produced
+        // sub-pixel waves, so the uncertainty channel rendered as straight lines.
+        return string.Join(" ", Geometry.WaveEdge(a, b, e.Frequency, e.Amplitude * Math.Min(len, 260) * 0.55, 20)
+            .Select(p => Fmt(p, ',')));
+    }
+}

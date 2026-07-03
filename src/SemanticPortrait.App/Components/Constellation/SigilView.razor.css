@@ -1,0 +1,64 @@
+/* The Sigil — masked public rendering. Deep-space atmosphere tinted by the dominant emotion. */
+.sstage {
+    position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 12px;
+    background:
+        radial-gradient(120% 95% at 50% 42%,
+            hsl(var(--bg-h, 232) 45% calc(var(--bg-l, 5%) + 6%)) 0%,
+            hsl(var(--bg-h, 232) 40% var(--bg-l, 5%)) 55%,
+            hsl(var(--bg-h, 232) 45% 2.5%) 100%);
+}
+.ssky { width: 100%; height: 100%; display: block; }
+
+/* stars twinkle gently, each on its own clock */
+.sstar { animation: stwink 4s ease-in-out infinite; }
+@keyframes stwink { 0%,100% { opacity: .2; } 50% { opacity: .8; } }
+
+/* cells breathe — slow, out of phase, alive */
+.scell {
+    transform-box: fill-box; transform-origin: center;
+    animation: sbreathe 12s ease-in-out infinite;
+    mix-blend-mode: screen;
+}
+@keyframes sbreathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.14) translate(6px, -8px); }
+}
+
+/* filaments draw in, then shimmer */
+.sfil {
+    stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+    animation: sdraw 2.4s ease forwards, sshimmer 7s ease-in-out 2.4s infinite;
+    mix-blend-mode: screen;
+}
+@keyframes sdraw { to { stroke-dashoffset: 0; } }
+@keyframes sshimmer { 0%,100% { opacity: .10; } 50% { opacity: .30; } }
+
+/* interference ripples slowly rotate against each other */
+.srip { transform-box: fill-box; transform-origin: center; animation: sturn 40s linear infinite; }
+@keyframes sturn { to { transform: rotate(360deg); } }
+
+/* the fire heart breathes warmer */
+.sfire { transform-box: fill-box; transform-origin: center; animation: sfireb 8s ease-in-out infinite; mix-blend-mode: screen; }
+@keyframes sfireb { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* Motion quiets ONLY via the app-level toggle (.sp-rm is an ancestor; isolation scopes the
+   leaf selector) — never the raw OS flag, which is on whenever Windows animation effects are
+   off and would freeze the sigil while the in-app menu still says "always on". */
+.sp-rm .scell, .sp-rm .sfil, .sp-rm .srip, .sp-rm .sfire, .sp-rm .sstar { animation: none; }
+.sp-rm .sfil { stroke-dashoffset: 0; }
+
+/* the masking contract line */
+.sreveal {
+    position: absolute; left: 14px; right: 14px; bottom: 12px;
+    font-size: 11px; color: rgba(255,255,255,.42); text-align: center; pointer-events: none;
+}
+.sreveal-title { letter-spacing: .35em; margin-right: 10px; color: rgba(255,255,255,.6); }
+
+/* export — quiet, top-right */
+.sexport { position: absolute; top: 14px; right: 14px; display: flex; align-items: center; gap: 8px; }
+.sexport button {
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px;
+    background: rgba(18,18,28,.85); border: 1px solid rgba(255,255,255,.14); color: #ececf0;
+}
+.sexport button:hover { border-color: var(--accent); }
+.sexport-note { font-size: 11px; color: rgba(255,255,255,.55); }

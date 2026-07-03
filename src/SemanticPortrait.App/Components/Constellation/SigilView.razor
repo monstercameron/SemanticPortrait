@@ -1,0 +1,137 @@
+@using SemanticPortrait.Core.Constellation
+
+@*
+    The SIGIL — the masked public rendering of the self-model. A pure view over SigilPainting,
+    which by construction carries only aggregate numbers (no labels, no node identities): an
+    aurora field where emotion hues drift as light cells, connectedness runs as filaments,
+    contradiction ripples as interference rings, creative fire glows warm, and volatility
+    roughens the turbulence. Deterministically seeded by the person's signature: unique like a
+    fingerprint, evolving as they change.
+*@
+
+<div class="sstage" style="--bg-h:@F(P?.BgHue ?? 232); --bg-l:@F((P?.BgLight ?? 0.05) * 100)%">
+    @if (P is { } p)
+    {
+        <svg id="sigil-svg" class="ssky" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice">
+            <defs>
+                <filter id="snebula" x="-40%" y="-40%" width="180%" height="180%">
+                    <feTurbulence type="fractalNoise" baseFrequency="@F(p.TurbulenceFrequency)"
+                                  numOctaves="4" seed="@(p.Sig.Seed & 0xffff)" result="noise" />
+                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="150" />
+                    <feGaussianBlur stdDeviation="16" />
+                </filter>
+                <filter id="ssoft" x="-60%" y="-60%" width="220%" height="220%">
+                    <feGaussianBlur stdDeviation="10" />
+                </filter>
+                <radialGradient id="svign" cx="50%" cy="50%" r="72%">
+                    <stop offset="60%" stop-color="black" stop-opacity="0" />
+                    <stop offset="100%" stop-color="black" stop-opacity="0.55" />
+                </radialGradient>
+            </defs>
+
+            <!-- starfield: the cosmic texture (density follows the model's size band) -->
+            @foreach (var s in p.Stars)
+            {
+                <circle class="sstar" cx="@F(s.X * 1000)" cy="@F(s.Y * 1000)" r="@F(s.R)"
+                        fill="white" opacity="@F(s.Opacity)" style="animation-duration:@F(s.TwinkleDur)s" />
+            }
+
+            <!-- aurora cells: the emotional weather, blurred + turbulence-distorted -->
+            <g filter="url(#snebula)">
+                @foreach (var (c, i) in p.Cells.Select((x, i) => (x, i)))
+                {
+                    @* blend inlined (not class-only) so the serialized-SVG export keeps the luminosity *@
+                    <circle class="scell" cx="@F(c.X * 1000)" cy="@F(c.Y * 1000)" r="@F(c.R * 1000)"
+                            fill="hsl(@F(c.Hue) @F(c.Sat * 100)% @F(c.Light * 100)%)" opacity="@F(c.Opacity)"
+                            style="mix-blend-mode:screen; animation-duration:@F(c.BreatheDur)s; animation-delay:@F(c.BreatheDelay)s" />
+                    @* luminous nucleus — the glow is earned where light concentrates *@
+                    <circle class="scell" cx="@F(c.X * 1000)" cy="@F(c.Y * 1000)" r="@F(c.R * 420)"
+                            fill="hsl(@F(c.Hue) @F(c.Sat * 100)% @F(Math.Min(0.78, c.Light + 0.22) * 100)%)" opacity="@F(c.Opacity * 0.9)"
+                            style="mix-blend-mode:screen; animation-duration:@F(c.BreatheDur * 0.8)s; animation-delay:@F(c.BreatheDelay)s" />
+                }
+            </g>
+
+            <!-- filaments: connectedness as drifting threads -->
+            <g filter="url(#ssoft)">
+                @foreach (var (f, i) in p.Filaments.Select((x, i) => (x, i)))
+                {
+                    <path class="sfil" d="M @F(f.X1 * 1000) @F(f.Y1 * 1000) Q @F(f.CX * 1000) @F(f.CY * 1000) @F(f.X2 * 1000) @F(f.Y2 * 1000)"
+                          stroke="hsl(@F(f.Hue) 70% 70%)" stroke-width="@F(f.Width)" fill="none"
+                          opacity="@F(f.Opacity)" pathLength="1" style="mix-blend-mode:screen; animation-delay:@F(i * 0.9)s" />
+                }
+            </g>
+
+            <!-- contradiction: interference ripples, two hues sharing one center -->
+            @foreach (var r in p.Ripples)
+            {
+                <g class="srip" style="animation-delay:@F(r.R * -20)s">
+                    <circle cx="@F(r.X * 1000)" cy="@F(r.Y * 1000)" r="@F(r.R * 1000)"
+                            stroke="hsl(@F(r.HueA) 70% 65%)" stroke-width="1.2" fill="none" opacity="0.30" />
+                    <circle cx="@F(r.X * 1000)" cy="@F(r.Y * 1000)" r="@F(r.R * 720)"
+                            stroke="hsl(@F(r.HueB) 70% 65%)" stroke-width="1.0" fill="none" opacity="0.22" />
+                </g>
+            }
+
+            <!-- creative fire: a warm ember heart that breathes with FireGlow -->
+            @if (p.GlowWarmth > 0.03)
+            {
+                <circle class="sfire" cx="500" cy="515" r="@F(70 + p.GlowWarmth * 200)"
+                        fill="hsl(32 95% 66%)" opacity="@F(0.14 + p.GlowWarmth * 0.30)" filter="url(#ssoft)" />
+            }
+
+            <rect x="0" y="0" width="1000" height="1000" fill="url(#svign)" pointer-events="none" />
+        </svg>
+
+        <!-- the masking contract, visible: what this image is derived from — and what it is not -->
+        <div class="sreveal">
+            <span class="sreveal-title">SIGIL</span>
+            derived only from aggregates — mood balance @F2(p.Sig.MeanValence), energy @F0(p.Sig.MeanEnergy * 100)%,
+            connectedness @F0(p.Sig.Density * 100)%, change @F0(p.Sig.Volatility * 100)%,
+            fire @F0(p.Sig.FireGlow * 100)% · no words, no names, no facts
+        </div>
+
+        <!-- the app's one designed egress: user-initiated wallpaper export -->
+        <div class="sexport" @onclick:stopPropagation="true">
+            <button @onclick="Export" disabled="@_exporting" title="Save a 2048×2048 PNG to Pictures\SemanticPortrait — the masked image only, nothing else leaves">
+                @(_exporting ? "…" : "⤓ save as image")
+            </button>
+            @if (_exportNote is { } note) { <span class="sexport-note">@note</span> }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public SigilPainting? P { get; set; }
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private bool _exporting;
+    private string? _exportNote;
+
+    private async Task Export()
+    {
+        if (P is not { } p) return;
+        _exporting = true; _exportNote = null;
+        try
+        {
+            var b64 = await JS.InvokeAsync<string?>("spExportSigil", "sigil-svg", 2048,
+                p.BgHue, p.BgLight * 100);
+            if (string.IsNullOrEmpty(b64)) { _exportNote = "export failed"; return; }
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SemanticPortrait");
+            Directory.CreateDirectory(dir);
+            var file = Path.Combine(dir, $"sigil-{DateTime.Now:yyyyMMdd-HHmm}.png");
+            await File.WriteAllBytesAsync(file, Convert.FromBase64String(b64));
+            _exportNote = $"saved → Pictures\\SemanticPortrait\\{Path.GetFileName(file)}";
+        }
+        catch (Exception ex)
+        {
+            _exportNote = "export failed";
+            SemanticPortrait.Core.DevTrap.Report("sigil-export", ex);
+        }
+        finally { _exporting = false; }
+    }
+
+    // Invariant culture: a locale with decimal COMMAS would silently corrupt SVG attributes.
+    private static string F(double v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    private static string F0(double v) => v.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+    private static string F2(double v) => v.ToString("+0.00;-0.00;0.00", System.Globalization.CultureInfo.InvariantCulture);
+}

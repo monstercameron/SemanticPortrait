@@ -1,0 +1,65 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+*.user
+*.suo
+.vs/
+
+# .NET / NuGet
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nupkg
+packages/
+
+# App data — NEVER commit personal data or secrets
+*.db
+*.sqlite
+*.sqlite3
+*.db-*
+secrets.json
+appsettings.*.local.json
+.env
+*.env
+*.key
+*.pem
+/data/
+/userdata/
+
+# Models / large binaries
+*.onnx
+*.gguf
+*.bin
+
+# OS / editor
+Thumbs.db
+.DS_Store
+*.swp
+
+# local embedding model artifacts (downloaded, never committed)
+models/
+src/SemanticPortrait.App/models/
+
+# local secrets / vault — these live in AppData, never in the repo; ignored defensively
+keyvault.json
+hello.bin
+lock.json
+profile.json
+*.key
+*.pem
+
+# PRIVATE — personal-profile material; local-only, never committed (removed from history 2026-07-02)
+plan.md
+todos.md
+schema/ontology.json
+design/constellation.md
+docs/schema-v2.md
+docs/threat-model.md
+tools/SemanticPortrait.LiveLoop/runs/
+import-test/
