@@ -28,7 +28,9 @@ public partial class Home
             var types = new Microsoft.Maui.Storage.FilePickerFileType(
                 new Dictionary<Microsoft.Maui.Devices.DevicePlatform, IEnumerable<string>>
                 {
-                    [Microsoft.Maui.Devices.DevicePlatform.WinUI] = new[] { ".txt", ".md", ".markdown", ".text" },
+                    [Microsoft.Maui.Devices.DevicePlatform.WinUI] = new[]
+                        { ".txt", ".md", ".markdown", ".text",
+                          ".json", ".csv", ".xml" },   // Discord export / generic CSV / SMS backup
                 });
             var picked = await Microsoft.Maui.Storage.FilePicker.Default.PickMultipleAsync(
                 new Microsoft.Maui.Storage.PickOptions { PickerTitle = "Import notes / analysis", FileTypes = types });
@@ -77,6 +79,9 @@ public partial class Home
                 string text;
                 try { using var s = await f.OpenReadAsync(); using var rdr = new StreamReader(s); text = await rdr.ReadToEndAsync(); }
                 catch (Exception ex) { await Note($"📥 {f.FileName}: read failed — {ex.Message}"); continue; }
+                // Source adapters: Discord/WhatsApp/SMS/CSV exports normalize into dated-entry
+                // text; anything unrecognized passes through untouched.
+                text = ImportAdapters.Normalize(f.FileName, text);
                 Status($"scanning {f.FileName} ({i}/{_importFiles.Count})…");
                 var about = "";
                 var pending = new List<(string, string)>();
