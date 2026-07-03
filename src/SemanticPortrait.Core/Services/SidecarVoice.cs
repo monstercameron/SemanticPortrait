@@ -60,18 +60,38 @@ public sealed class SidecarVoice
         return (cut > 200 ? s[..(cut + 1)] : s[..900]) + " …and more in the written reply.";
     }
 
-    /// <summary>The CLI logs `stt_text='…' language=…` — pull the transcription out.</summary>
+    /// <summary>The CLI logs `stt_text=%r` — PYTHON REPR, so the quoting flips with content:
+    /// plain text gets 'single quotes', anything with an apostrophe ("I don't…") gets "double
+    /// quotes", and internal same-quotes arrive backslash-escaped. Parse the repr properly —
+    /// the naive single-quote scan silently dropped every transcript containing a contraction.</summary>
     internal static string? ParseSttText(string output)
     {
-        const string marker = "stt_text='";
+        const string marker = "stt_text=";
         var i = output.LastIndexOf(marker, StringComparison.Ordinal);
         if (i < 0) return null;
-        var start = i + marker.Length;
-        var end = output.IndexOf("' language=", start, StringComparison.Ordinal);
-        if (end < 0) end = output.IndexOf('\'', start);
-        if (end <= start) return null;
-        var text = output[start..end].Trim();
-        return text.Length > 0 ? text : null;
+        var pos = i + marker.Length;
+        if (pos >= output.Length) return null;
+        var quote = output[pos];
+        if (quote != '\'' && quote != '"') return null;
+
+        var sb = new System.Text.StringBuilder();
+        for (var j = pos + 1; j < output.Length; j++)
+        {
+            var ch = output[j];
+            if (ch == '\\' && j + 1 < output.Length)
+            {
+                var n = output[++j];
+                sb.Append(n switch { 'n' => '\n', 't' => '\t', 'r' => '\r', _ => n });
+                continue;
+            }
+            if (ch == quote)
+            {
+                var text = sb.ToString().Trim();
+                return text.Length > 0 ? text : null;
+            }
+            sb.Append(ch);
+        }
+        return null;   // unterminated — treat as no transcript
     }
 
     private async Task<string?> RunAsync(string args, CancellationToken ct)

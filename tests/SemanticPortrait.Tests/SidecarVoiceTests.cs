@@ -24,6 +24,23 @@ public class SidecarVoiceTests
     }
 
     [Fact]
+    public void Apostrophes_flip_python_repr_to_double_quotes_and_still_parse()
+    {
+        // %r quoting: a contraction switches repr to double quotes — the bug that ate every longer sentence.
+        Assert.Equal("I don't want to talk about work today, it's been a lot.",
+            SidecarVoice.ParseSttText(
+                "INFO whispertome.cli: stt_text=\"I don't want to talk about work today, it's been a lot.\" language=en duration_ms=8100"));
+    }
+
+    [Fact]
+    public void Escaped_quotes_inside_the_repr_unescape()
+    {
+        // both quote kinds present → repr uses single quotes and escapes the internal ones
+        Assert.Equal("He said \"don't\" again.",
+            SidecarVoice.ParseSttText(@"stt_text='He said ""don\'t"" again.' language=en"));
+    }
+
+    [Fact]
     public void Unavailable_sidecar_reports_unavailable_and_never_throws()
     {
         var v = new SidecarVoice(@"C:\does\not\exist\python.exe", @"C:\does\not\exist");
