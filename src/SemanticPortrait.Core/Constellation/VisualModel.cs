@@ -33,7 +33,11 @@ public readonly record struct VisualEdge(
     int Valence,
     double Width,                         // confidence → thickness
     bool Dashed,                          // inferred vs stated
-    double PulseAmp, double PulseFreq);   // liveness (endpoint salience) → opacity throb
+    double PulseAmp, double PulseFreq,    // liveness (endpoint salience) → opacity throb
+    // Both endpoints sit inside the same connected community AND the edge itself isn't the sole
+    // link holding two communities together (a true graph bridge/cut-edge) — see Encoding.IsIntra.
+    // Defaults false so every synthetic weak-tie spoke (negative id) is never intra automatically.
+    bool Intra = false);
 
 /// <summary>The complete render payload: nodes + edges + asterisms + gestalt + join coverage.
 /// <paramref name="Fp"/> is the generative fingerprint — global continuous channels the renderer

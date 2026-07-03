@@ -89,6 +89,12 @@
     background: rgba(18,18,28,.85); border: 1px solid rgba(255,255,255,.14); color: #ececf0;
 }
 .czoom button:hover { border-color: var(--accent); }
+.czoom button:disabled { cursor: default; opacity: .6; }
+/* export status — a quiet one-liner under the zoom stack (mirrors the Sigil's .sexport-note) */
+.cexport-note {
+    font-size: 9px; color: rgba(255,255,255,.55); max-width: 130px; line-height: 1.35;
+    background: rgba(14,14,23,.85); border-radius: 6px; padding: 3px 6px; margin-top: 2px;
+}
 
 /* LoD tiers: distance does the filtering (design §8) */
 .lod-far .cnode-sat, .lod-far .cnode-title { display: none; }
@@ -98,6 +104,10 @@
 .lod-mid .cnode-sat { display: initial; opacity: .55; font-size: 10px; }
 .lod-mid .sat-crowded { display: none; }
 .lod-near .cnode-sat { display: initial; }
+/* hover affordance: a crowded label is still THERE, just budget-dropped — hovering its own
+   node's group (any painted shape inside .cspawn counts, per :hover's normal bubbling) reveals
+   it without needing a full zoom-in. Higher specificity than the display:none above wins. */
+.lod-mid .cspawn:hover .sat-crowded { display: initial; opacity: .85; }
 
 /* asterisms: nebula fog + faint outline — the gestalt layer. Bloom zoomed OUT, thin near. */
 .chull { fill-opacity: .012; stroke-opacity: .22; stroke-width: 1.1; stroke-dasharray: 3 6; pointer-events: none; }

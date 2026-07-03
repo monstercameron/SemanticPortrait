@@ -220,4 +220,42 @@ public class ConstellationEncodingTests
         var entries = new[] { Entry(10, "fine", 0, "[\"seen\"]") };
         Assert.Equal(0.5, Build(nodes, Array.Empty<GraphEdge>(), entries).LinkedFraction, 6);
     }
+
+    [Fact]
+    public void Bridge_edge_between_two_communities_is_not_intra()
+    {
+        // Two triangles (each a genuine 2-edge-connected community — every edge sits on a cycle)
+        // joined by a SINGLE edge. That single link is a true graph-theoretic bridge: removing it
+        // splits the graph in two, so it must NOT read as intra-cluster even though, after adding
+        // it, everything is technically one connected component.
+        var nodes = new[]
+        {
+            Node(1, "a1"), Node(2, "a2"), Node(3, "a3"),
+            Node(4, "b1"), Node(5, "b2"), Node(6, "b3"),
+        };
+        var edges = new[]
+        {
+            new GraphEdge(1, 1, 2, "lifts", "lifts", false, 0.9),
+            new GraphEdge(2, 2, 3, "lifts", "lifts", false, 0.9),
+            new GraphEdge(3, 1, 3, "lifts", "lifts", false, 0.9),
+            new GraphEdge(4, 4, 5, "lifts", "lifts", false, 0.9),
+            new GraphEdge(5, 5, 6, "lifts", "lifts", false, 0.9),
+            new GraphEdge(6, 4, 6, "lifts", "lifts", false, 0.9),
+            new GraphEdge(7, 3, 4, "lifts", "lifts", false, 0.9),   // the bridge: a3 → b1
+        };
+        var entries = new[]
+        {
+            Entry(10, "anxious", -0.2, "[\"a1\"]"), Entry(11, "anxious", -0.2, "[\"a2\"]"),
+            Entry(12, "anxious", -0.2, "[\"a3\"]"), Entry(13, "anxious", -0.2, "[\"b1\"]"),
+            Entry(14, "anxious", -0.2, "[\"b2\"]"), Entry(15, "anxious", -0.2, "[\"b3\"]"),
+        };
+        var vm = Build(nodes, edges, entries);
+
+        Assert.False(vm.Edges.Single(e => e.Id == 7).Intra, "the sole cross-community link must not read as intra");
+        foreach (var id in new long[] { 1, 2, 3, 4, 5, 6 })
+            Assert.True(vm.Edges.Single(e => e.Id == id).Intra, $"edge {id} sits on a cycle within its own community");
+
+        // synthetic weak-tie spokes (negative ids) are structural scaffolding, never intra
+        Assert.All(vm.Edges.Where(e => e.Id < 0), e => Assert.False(e.Intra));
+    }
 }

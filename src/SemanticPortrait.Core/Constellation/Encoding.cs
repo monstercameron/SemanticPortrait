@@ -124,7 +124,8 @@ public static class Encoding
                 Width: Math.Min(2.0, 0.8 + 2.2 * e.Confidence),   // >2px reads as rope, not thread
                 Dashed: e.Inferred,
                 PulseAmp: e.Activity > 0.08 ? 0.30 * e.Activity : 0,
-                PulseFreq: 0.25 + 0.55 * e.Activity);
+                PulseFreq: 0.25 + 0.55 * e.Activity,
+                Intra: IsIntra(model.Edges, e));
         }).ToList();
 
         // The self is a NETWORK, not an archipelago: strong ties run between peers (the real
@@ -497,6 +498,36 @@ public static class Encoding
                 }
             if (!moved) break;
         }
+    }
+
+    /// <summary>
+    /// "Same community" for the intra-cluster brightening (design punch list): NOT simply "both
+    /// endpoints end up in the same connected component," because ANY real edge trivially unions
+    /// its own two endpoints — under that reading every edge would be intra, including the one
+    /// link that stitches two otherwise-separate clusters together. Instead: exclude this edge and
+    /// re-run union-find over every OTHER real edge. If the endpoints are STILL connected (some
+    /// other path — a cycle, a parallel relation), this edge is redundant scaffolding inside a
+    /// genuinely multi-connected community → intra. If removing it splits the graph, this edge
+    /// IS the sole connector (a graph-theoretic bridge/cut-edge) → not intra. A lone two-node pair
+    /// with a single edge and no other path also reads as not-intra by this test, which matches
+    /// BuildHulls' own ≥3-member threshold for drawing a community's fog in the first place.
+    /// </summary>
+    private static bool IsIntra(IReadOnlyList<EdgeMetric> allEdges, EdgeMetric target)
+    {
+        if (target.Src == target.Dst) return true;
+        var parent = new Dictionary<long, long>();
+        long Find(long x)
+        {
+            if (!parent.ContainsKey(x)) parent[x] = x;
+            while (parent[x] != x) x = parent[x] = parent[parent[x]];
+            return x;
+        }
+        foreach (var e in allEdges)
+        {
+            if (e.EdgeId == target.EdgeId) continue;   // the edge under test never votes for itself
+            parent[Find(e.Src)] = Find(e.Dst);
+        }
+        return Find(target.Src) == Find(target.Dst);
     }
 
     private static double San(double v) => double.IsNaN(v) ? 0 : v;
