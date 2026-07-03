@@ -31,9 +31,17 @@ public sealed class SidecarVoice
 
     public bool Available => File.Exists(_python) && Directory.Exists(_workDir);
 
-    /// <summary>Transcribe a WAV file → text (null on failure/empty).</summary>
+    /// <summary>Transcribe a WAV file → text (null on failure/empty). Persistent server first
+    /// (models stay warm), per-call CLI as the fallback.</summary>
     public async Task<string?> TranscribeAsync(string wavPath, CancellationToken ct = default)
     {
+        var viaServer = await ServerRequestAsync(
+            System.Text.Json.JsonSerializer.Serialize(new { op = "stt", wav = wavPath }), ct);
+        if (viaServer is { } el && el.TryGetProperty("text", out var t))
+        {
+            var text = t.GetString()?.Trim();
+            return string.IsNullOrWhiteSpace(text) ? null : text;
+        }
         var output = await RunAsync($"-m whispertome test-stt --wav \"{wavPath}\"", ct);
         return output is null ? null : ParseSttText(output);
     }
@@ -41,10 +49,101 @@ public sealed class SidecarVoice
     /// <summary>Synthesize text → a WAV file at <paramref name="outWavPath"/> (null on failure).</summary>
     public async Task<string?> SpeakAsync(string text, string outWavPath, CancellationToken ct = default)
     {
+        var viaServer = await ServerRequestAsync(
+            System.Text.Json.JsonSerializer.Serialize(new { op = "tts", text, @out = outWavPath }), ct);
+        if (viaServer is not null && File.Exists(outWavPath)) return outWavPath;
         // The CLI takes the text as one argv element; strip quotes so it can't break out of them.
         var safe = text.Replace('"', '″');
         var output = await RunAsync($"-m whispertome test-tts \"{safe}\" --out \"{outWavPath}\"", ct);
         return output is not null && File.Exists(outWavPath) ? outWavPath : null;
+    }
+
+    // ---- persistent server: models load once, requests answer in ~1-3s instead of ~10s -----
+    // The server exits on stdin EOF, so it can never outlive the app; an idle timer also shuts
+    // it down after 5 minutes (fanless-laptop battery philosophy: warm is a lease, not a right).
+    private Process? _server;
+    private readonly SemaphoreSlim _serverGate = new(1, 1);   // one in-flight request at a time
+    private DateTime _lastUse = DateTime.MinValue;
+    private System.Threading.Timer? _idleKill;
+    private static readonly TimeSpan IdleShutdown = TimeSpan.FromMinutes(5);
+
+    /// <summary>Send one request line; returns the parsed ok-reply or null (caller falls back).</summary>
+    private async Task<System.Text.Json.JsonElement?> ServerRequestAsync(string requestJson, CancellationToken ct)
+    {
+        if (!Available) return null;
+        await _serverGate.WaitAsync(ct);
+        try
+        {
+            if (_server is null || _server.HasExited)
+                if (!await StartServerAsync(ct)) return null;
+            _lastUse = DateTime.UtcNow;
+            await _server!.StandardInput.WriteLineAsync(requestJson.AsMemory(), ct);
+            var reply = await ReadLineWithTimeoutAsync(_server.StandardOutput, TimeSpan.FromSeconds(90), ct);
+            if (reply is null) { KillServer(); return null; }
+            var doc = System.Text.Json.JsonDocument.Parse(reply);
+            if (doc.RootElement.TryGetProperty("ok", out var ok) && ok.GetBoolean())
+                return doc.RootElement.Clone();
+            DevTrap.Report("voice-server", new InvalidOperationException(reply.Length > 300 ? reply[..300] : reply));
+            return null;   // server healthy but request failed → let the CLI fallback try
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception e)
+        {
+            DevTrap.Report("voice-server", e);
+            KillServer();
+            return null;
+        }
+        finally { _serverGate.Release(); }
+    }
+
+    private async Task<bool> StartServerAsync(CancellationToken ct)
+    {
+        var script = Path.Combine(AppContext.BaseDirectory, "voice", "sp_voice_server.py");   // ships with the app
+        if (!File.Exists(script)) return false;
+        var p = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = _python,
+                Arguments = $"\"{Path.GetFullPath(script)}\" \"{_workDir}\"",
+                WorkingDirectory = _workDir,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardInputEncoding = new System.Text.UTF8Encoding(false),   // NO BOM — it breaks json.loads
+                StandardOutputEncoding = new System.Text.UTF8Encoding(false),
+            }
+        };
+        p.Start();
+        _ = p.StandardError.ReadToEndAsync();   // drain so the pipe never blocks the server
+        var ready = await ReadLineWithTimeoutAsync(p.StandardOutput, TimeSpan.FromSeconds(30), ct);
+        if (ready is null || !ready.Contains("\"ready\""))
+        {
+            try { p.Kill(entireProcessTree: true); } catch { }
+            return false;
+        }
+        _server = p;
+        _idleKill ??= new System.Threading.Timer(_ =>
+        {
+            if (_server is { } s && !s.HasExited && DateTime.UtcNow - _lastUse > IdleShutdown)
+                KillServer();
+        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        return true;
+    }
+
+    private static async Task<string?> ReadLineWithTimeoutAsync(StreamReader reader, TimeSpan timeout, CancellationToken ct)
+    {
+        var read = reader.ReadLineAsync(ct).AsTask();
+        var done = await Task.WhenAny(read, Task.Delay(timeout, ct));
+        return done == read ? await read : null;
+    }
+
+    private void KillServer()
+    {
+        try { _server?.Kill(entireProcessTree: true); } catch { }
+        _server?.Dispose(); _server = null;
     }
 
     /// <summary>Markdown → speakable plain text, capped at a sentence boundary (~900 chars) so a

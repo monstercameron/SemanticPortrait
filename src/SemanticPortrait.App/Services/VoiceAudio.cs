@@ -50,7 +50,17 @@ public sealed class VoiceAudio : IDisposable
     private bool _inSpeech; private int _speechMs, _silenceMs;
     private Action<string>? _onUtterance;
 
-    private const double SpeechRms = 350;      // int16 scale; typical room noise sits well under this
+    // Adaptive gate: the speech threshold rides an ambient-noise floor instead of a fixed
+    // constant (a fixed 350 misfired in quiet rooms and undershot in loud ones). The floor
+    // adapts DOWN fast (a quiet moment recalibrates instantly) and UP slowly (speech shouldn't
+    // drag the floor up after itself).
+    private double _noiseFloor = 150;
+    private const double MinThreshold = 220;   // int16 scale; below this is genuinely quiet
+    private double SpeechThreshold => Math.Max(MinThreshold, _noiseFloor * 3.0);
+
+    /// <summary>Live input level 0..1 for the UI meter (updated per 100ms block while listening).</summary>
+    public double Level { get; private set; }
+    public event Action<double>? LevelChanged;
     private const int PreRollMs = 400;         // keep the syllable that TRIGGERED speech detection
     private const int EndSilenceMs = 900;      // a natural pause commits the utterance
     private const int MinSpeechMs = 300;       // shorter bursts are noise, not words
@@ -88,7 +98,11 @@ public sealed class VoiceAudio : IDisposable
         double sum = 0; int n = e.BytesRecorded / 2;
         for (int i = 0; i + 1 < e.BytesRecorded; i += 2)
         { short v = BitConverter.ToInt16(e.Buffer, i); sum += (double)v * v; }
-        bool loud = n > 0 && Math.Sqrt(sum / n) > SpeechRms;
+        var rms = n > 0 ? Math.Sqrt(sum / n) : 0;
+        bool loud = rms > SpeechThreshold;
+        if (!loud) _noiseFloor += (rms - _noiseFloor) * (rms < _noiseFloor ? 0.5 : 0.02);
+        Level = Math.Clamp(rms / 2800.0, 0, 1);
+        try { LevelChanged?.Invoke(Level); } catch { }
 
         lock (_segGate)
         {

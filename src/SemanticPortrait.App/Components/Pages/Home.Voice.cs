@@ -16,6 +16,17 @@ public partial class Home
     private int _sttPending;         // utterance chunks awaiting transcription
     private Msg? _speaking;          // the reply currently being synthesized/spoken
     private readonly SemaphoreSlim _sttGate = new(1, 1);   // one sidecar process at a time
+    private double _micLevel;        // live input level 0..1 (meter next to "listening…")
+    private DateTime _lastMeterPaint = DateTime.MinValue;
+
+    // 10 Hz from the audio thread → throttle repaints to ~5 Hz so the meter is smooth, not spammy
+    private void OnMicLevel(double level)
+    {
+        _micLevel = level;
+        if ((DateTime.UtcNow - _lastMeterPaint).TotalMilliseconds < 180) return;
+        _lastMeterPaint = DateTime.UtcNow;
+        _ = InvokeAsync(StateHasChanged).Guard("mic-meter");
+    }
 
     private void InitVoice()
     {
@@ -37,12 +48,19 @@ public partial class Home
         _voiceAudio ??= new VoiceAudio();
         if (!_recording)
         {
-            try { _voiceAudio.StartContinuous(OnUtterance); _recording = true; }
+            try
+            {
+                _voiceAudio.LevelChanged -= OnMicLevel;
+                _voiceAudio.LevelChanged += OnMicLevel;
+                _voiceAudio.StartContinuous(OnUtterance);
+                _recording = true;
+            }
             catch (Exception ex) { _messages.Add(new() { Role = "sys", Text = $"🎙 mic unavailable — {ex.Message}" }); }
             return;
         }
         _voiceAudio.StopContinuous();   // trailing speech flushes as a final utterance
-        _recording = false;
+        _voiceAudio.LevelChanged -= OnMicLevel;
+        _recording = false; _micLevel = 0;
         StateHasChanged();
     }
 

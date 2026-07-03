@@ -73,6 +73,11 @@
         <PackageReference Include="NAudio" Version="2.2.1" />
     </ItemGroup>
 
+    <ItemGroup>
+        <!-- persistent voice server script (runs in the sibling whispertome venv) -->
+        <Content Include="..\..\voice\sp_voice_server.py" Link="voice\sp_voice_server.py" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
     <!-- Windows Action Center toasts (unpackaged-friendly compat APIs) -->
     <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
         <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />

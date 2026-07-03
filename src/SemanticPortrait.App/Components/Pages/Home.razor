@@ -888,7 +888,10 @@
                         </button>
                         @if (_recording)
                         {
-                            <span class="sp-mic-live">listening…@(_sttPending > 0 ? $" ✍{_sttPending}" : "")</span>
+                            <span class="sp-mic-live">
+                                <span class="sp-mic-meter"><span class="sp-mic-meter-fill" style="width:@(Math.Round(_micLevel * 100))%"></span></span>
+                                listening…@(_sttPending > 0 ? $" ✍{_sttPending}" : "")
+                            </span>
                         }
                         else if (_sttPending > 0)
                         {
