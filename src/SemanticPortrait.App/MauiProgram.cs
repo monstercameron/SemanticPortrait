@@ -176,6 +176,7 @@ public static class MauiProgram
 			() => Microsoft.Maui.Storage.Preferences.Default.Get("masking", false),
 			sp.GetRequiredService<ProviderRegistry>(),
 			() => ((PreferLocalEmbedder)sp.GetRequiredService<IEmbedder>()).LocalActive));
+		builder.Services.AddSingleton<ProgramTools>();
 		builder.Services.AddSingleton<GraphTools>();
 		builder.Services.AddSingleton<EntryTools>();
 		builder.Services.AddSingleton<PredictionTools>();

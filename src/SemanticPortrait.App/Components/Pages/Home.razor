@@ -7,6 +7,7 @@
 @inject MemoryTools Memory
 @inject TaskTools Tasks
 @inject PrivacyTools Privacy
+@inject ProgramTools Programs
 @inject Db Database
 @inject AnalystSubagent Analyst
 @inject ProfileStore Profile
@@ -223,6 +224,9 @@
                 <button class="sp-menu-item" @onclick="@(() => { OpenInsights(); _showMenu = false; })">
                     <span>📊</span> Insights
                 </button>
+                <button class="sp-menu-item" @onclick="@(() => { OpenPrograms(); _showMenu = false; })">
+                    <span>🌱</span> Guided programs
+                </button>
                 <button class="sp-menu-item" @onclick="@(() => { _showTimeline = true; _showMenu = false; })">
                     <span>🕰</span> Timeline
                 </button>
@@ -421,7 +425,8 @@
                 @if (!string.IsNullOrEmpty(_expMsg)) { <div class="sp-lock-err">@_expMsg</div> }
                 <div class="sp-modal-actions">
                     <button class="sp-btn-ghost" @onclick="() => _showExport = false">Cancel</button>
-                    <button class="sp-send" @onclick="RunExport">Export</button>
+                    <button class="sp-btn-ghost" @onclick="RunPdfExport" title="A printable book of your entries">📖 PDF book</button>
+                    <button class="sp-send" @onclick="RunExport">Export data</button>
                 </div>
             </div>
         </div>
@@ -518,6 +523,38 @@
                 else { <p class="sp-muted" style="margin:8px 0">Instant, on-device — no AI call. Click a result to jump to it.</p> }
                 <div class="sp-modal-actions">
                     <button class="sp-btn-ghost" @onclick="() => _showSearch = false">Close</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showPrograms)
+    {
+        <div class="sp-modal-backdrop" @onclick="() => _showPrograms = false">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(540px,94vw); max-height:80vh; overflow:auto">
+                <h3 style="color:var(--text)">Guided programs</h3>
+                <p class="sp-muted" style="margin:0 0 12px">A short, gentle sequence of daily prompts. One a day; skip any day you like.</p>
+                @{ var activeProg = Database.IsOpen ? Programs.Active() : null; }
+                @foreach (var p in ProgramTools.Catalog)
+                {
+                    var isActive = activeProg is { } ap && ap.Program.Id == p.Id;
+                    <div class="sp-program">
+                        <div class="sp-program-info">
+                            <b>@p.Name</b>
+                            <span class="sp-muted">@p.Prompts.Count days · @p.Blurb</span>
+                        </div>
+                        @if (isActive)
+                        {
+                            <span class="sp-program-on">day @activeProg!.Value.Day ✓</span>
+                        }
+                        else
+                        {
+                            <button class="sp-send" @onclick="() => StartProgram(p.Id)">Start</button>
+                        }
+                    </div>
+                }
+                <div class="sp-modal-actions">
+                    <button class="sp-btn-ghost" @onclick="() => _showPrograms = false">Close</button>
                 </div>
             </div>
         </div>

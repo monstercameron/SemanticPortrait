@@ -219,6 +219,16 @@ body {
     font-size: 12px; color: var(--muted); border-radius: 8px; border: 1px solid transparent;
 }
 .sp-cal-cell.on { color: var(--text); border-color: var(--line); font-weight: 600; }
+
+/* guided programs */
+.sp-program {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); margin-bottom: 8px;
+}
+.sp-program-info { display: flex; flex-direction: column; gap: 2px; }
+.sp-program-info b { color: var(--text); }
+.sp-program-info span { font-size: 12px; }
+.sp-program-on { color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .sp-danger-btn:hover { color: #ff5a5a; border-color: #ff5a5a; }
 
 /* masking consent (onboarding + security) */

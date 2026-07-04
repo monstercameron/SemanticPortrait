@@ -169,6 +169,10 @@ public partial class Home
         "privacy_status"     => "🛡 checked what leaves this machine",
         "voice_setup"        => "🎙 checked voice setup",
         "set_evening_checkin" => "🌙 set the evening check-in",
+        "list_programs"      => "🌱 browsed journaling programs",
+        "start_program"      => "🌱 started a program",
+        "program_today"      => "🌱 checked today's prompt",
+        "stop_program"       => "🌱 stopped the program",
         "list_reminders"     => "⏰ checked your reminders",
         "cancel_reminder"    => "⏰ cancelled a reminder",
         "make_prediction"    => "🎯 logged a prediction",
@@ -263,7 +267,7 @@ public partial class Home
         // flat search_memory; portrait gives the interconnected view of one person/theme.
         // Exception: the intake counter is an operational write (worst-case poisoning = a wrong
         // count), offered ONLY while the intake is unfinished — it vanishes from specs after.
-        var specs = Tools.ReadSpecs.Concat(Recall.MainSpecs).Concat(Tasks.Specs).Concat(Privacy.Specs)
+        var specs = Tools.ReadSpecs.Concat(Recall.MainSpecs).Concat(Tasks.Specs).Concat(Privacy.Specs).Concat(Programs.Specs)
             .Concat(_voiceTools is { } vt ? vt.Specs : Array.Empty<object>())
             .Concat(Intake.IsComplete() ? Array.Empty<object>() : Intake.Specs)
             .Append(HandoffSpec).ToList();
@@ -293,6 +297,7 @@ public partial class Home
                 return "handed to the analyst (analyzing in the background)";
             }
             var result = Tasks.Handles(name) ? await Tasks.ExecuteAsync(name, args)
+                : Programs.Handles(name) ? await Programs.ExecuteAsync(name, args)
                 : Privacy.Handles(name) ? await Privacy.ExecuteAsync(name, args)
                 : _voiceTools is { } vtl && vtl.Handles(name) ? await vtl.ExecuteAsync(name, args)
                 : Intake.Handles(name) ? await Intake.ExecuteAsync(name, args)

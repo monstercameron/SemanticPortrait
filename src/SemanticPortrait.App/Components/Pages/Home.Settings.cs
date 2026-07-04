@@ -159,6 +159,31 @@ public partial class Home
         StateHasChanged();
     }
 
+    /// <summary>Export a printable PDF "book" of the user's entries (same date range as the data
+    /// export). Pure-managed PDFsharp — no native deps, so it runs on this arm64 box.</summary>
+    private void RunPdfExport()
+    {
+        if (_locked || _configuring || !Database.IsOpen) return;
+        try
+        {
+            DateTime? from = _expFrom is { } f ? f.Date : null;
+            DateTime? to = _expTo is { } t ? t.Date : null;
+            var pdf = new SemanticPortrait.Core.PdfExport()
+                .BuildJournalPdf(Database.GetMessages(), Profile.Get("name"), from, to);
+
+            var folder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var path = Path.Combine(folder, $"SemanticPortrait-journal-{DateTime.Now:yyyyMMdd-HHmm}.pdf");
+            File.WriteAllBytes(path, pdf);
+            var warn = "a plaintext book of your entries — delete it when you're done";
+            if (folder.Contains("OneDrive", StringComparison.OrdinalIgnoreCase))
+                warn += ". ⚠ This Desktop syncs to OneDrive, so it WILL upload to the cloud";
+            _messages.Add(new() { Role = "sys", Text = $"📖 exported your journal as a PDF to {path} ({warn})" });
+            _showExport = false;
+        }
+        catch (Exception ex) { _expMsg = $"PDF export failed: {ex.Message}"; }
+        StateHasChanged();
+    }
+
     // --- encrypted backup + restore --------------------------------------------
     private bool _showBackup;
     private string _backupMsg = "";

@@ -61,6 +61,22 @@ public partial class Home
         DateTime.TryParse(utc, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d)
             ? d.ToLocalTime().ToString("MMM d, yyyy") : utc;
 
+    // --- guided journaling programs -------------------------------------------
+    private bool _showPrograms;
+    private void OpenPrograms() => _showPrograms = true;
+
+    /// <summary>Start a program and have the agent introduce day 1 in-thread.</summary>
+    private async Task StartProgram(string id)
+    {
+        _showPrograms = false;
+        var res = await Programs.ExecuteAsync("start_program", $"{{\"id\":\"{id}\"}}");
+        StateHasChanged();
+        await FireProactive(
+            $"[The user just started a guided journaling program. Program tool says: \"{res}\". " +
+            "Welcome them to it warmly in one or two lines and offer today's prompt as an invitation " +
+            "— an opening, not an assignment. No preamble.]");
+    }
+
     private static string DayTint(double meanValence)
     {
         var t = Math.Clamp((meanValence + 1) / 2, 0, 1);   // 0 = red, 1 = green

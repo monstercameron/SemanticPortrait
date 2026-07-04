@@ -186,6 +186,17 @@ public partial class Home
 
             Database.SetSetting("digest_day", today);   // one shot per day, hit or miss
 
+            // Guided program: deliver today's prompt once per day if one is running.
+            if (Programs.Active() is { } ap && ap.Day <= ap.Program.Prompts.Count && Programs.ClaimTodayDelivery())
+            {
+                _ = FireProactive(
+                    $"[Guided journaling program \"{ap.Program.Name}\", day {ap.Day}/{ap.Program.Prompts.Count}. " +
+                    $"Offer today's prompt warmly as an invitation: \"{ap.Program.Prompts[ap.Day - 1]}\". " +
+                    "One or two lines, no preamble, no pressure.]")
+                    .Guard("program-daily");
+                if (items.Count == 0) return;
+            }
+
             // "On this day": a memory from this date in a prior year — the continuity payoff of a
             // journal you keep for a lifetime. Folded into the same once-a-day digest moment.
             var onThisDay = Database.OnThisDay(DateTime.Now);

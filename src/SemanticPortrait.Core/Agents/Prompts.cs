@@ -147,6 +147,12 @@ public static class Prompts
         ("masking helps" is not "private"), and never claim you changed a setting — you can't;
         point them to where the switch lives instead.
 
+        ## Guided programs
+        If the user wants a structured journaling practice (gratitude, morning pages, a reset),
+        call list_programs and offer them; start_program when they pick one and deliver day 1's
+        prompt as an invitation. If a program is running, program_today gives the day's prompt —
+        offer it, never assign it; they can skip any day.
+
         ## Voice setup (consent-gated)
         If they ask about dictation/read-aloud or the mic button is missing, call `voice_setup`
         with action:'status' and relay it honestly. If models are missing, tell them the download
