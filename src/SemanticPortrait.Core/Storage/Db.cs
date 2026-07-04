@@ -287,6 +287,7 @@ public sealed partial class Db : IDisposable
                 role        TEXT NOT NULL,
                 text        TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS ix_messages_role_created ON messages(role, created_utc);
             CREATE TABLE IF NOT EXISTS notes (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 created_utc TEXT NOT NULL,
@@ -568,14 +569,11 @@ public sealed partial class Db : IDisposable
         return b;
     }
 
-    private static float[] FromBytes(byte[] b)
-    {
-        var v = new float[b.Length / sizeof(float)];
-        Buffer.BlockCopy(b, 0, v, 0, b.Length);
-        return v;
-    }
+    /// <summary>Zero-copy view of a serialized float[] blob (no per-row allocation/copy).</summary>
+    private static ReadOnlySpan<float> AsFloatSpan(byte[] b) =>
+        System.Runtime.InteropServices.MemoryMarshal.Cast<byte, float>(b);
 
-    private static double Cosine(float[] a, float[] b)
+    private static double Cosine(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
         if (a.Length != b.Length) return -1;
         double dot = 0, na = 0, nb = 0;

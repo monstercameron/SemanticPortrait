@@ -208,7 +208,7 @@ public sealed partial class Db
             while (r.Read())
             {
                 if (r["text"] is DBNull) continue;
-                var vec = FromBytes((byte[])r["vec"]);
+                var vec = AsFloatSpan((byte[])r["vec"]);
                 results.Add(new SearchHit(
                     r.GetString(0), r.GetInt64(1), r.GetString(3), r.GetString(4), Cosine(query, vec)));
             }
@@ -258,7 +258,7 @@ public sealed partial class Db
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 results.Add(new SearchHit("note", r.GetInt64(0), r.GetString(2), r.GetString(3),
-                    Cosine(query, FromBytes((byte[])r["vec"]))));
+                    Cosine(query, AsFloatSpan((byte[])r["vec"]))));
             return results.OrderByDescending(x => x.Score).Take(k).ToList();
         }
     }
