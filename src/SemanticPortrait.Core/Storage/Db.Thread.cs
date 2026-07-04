@@ -221,29 +221,36 @@ public sealed partial class Db
         }
     }
 
-    /// <summary>Top-k most similar entries (messages) and notes to the query vector (cosine).</summary>
+    /// <summary>Top-k most similar entries (messages) and notes to the query vector (cosine).
+    /// Two-phase: phase 1 scores every embedding row using only ref_type/ref_id/vec/created_utc
+    /// (no text), then phase 2 hydrates text for just the top-k winners — avoids materializing
+    /// the whole corpus's text to discard all but k of it.</summary>
     public List<SearchHit> Search(float[] query, int k)
     {
         lock (_gate)
         {
-            var results = new List<SearchHit>();
-            using var cmd = Conn.CreateCommand();
-            cmd.CommandText = """
-                SELECT e.ref_type, e.ref_id, e.vec,
-                       COALESCE(m.text, n.text)               AS text,
-                       COALESCE(m.created_utc, n.created_utc)  AS created
-                FROM embeddings e
-                LEFT JOIN messages m ON e.ref_type='message' AND m.id = e.ref_id
-                LEFT JOIN notes    n ON e.ref_type='note'    AND n.id = e.ref_id;
-                """;
-            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
+            var scored = new List<(string RefType, long RefId, string CreatedUtc, double Score)>();
+            using (var cmd = Conn.CreateCommand())
             {
-                if (r["text"] is DBNull) continue;
-                var vec = AsFloatSpan((byte[])r["vec"]);
-                results.Add(new SearchHit(
-                    r.GetString(0), r.GetInt64(1), r.GetString(3), r.GetString(4), Cosine(query, qn, vec)));
+                cmd.CommandText = """
+                    SELECT e.ref_type, e.ref_id, e.vec,
+                           COALESCE(m.created_utc, n.created_utc) AS created
+                    FROM embeddings e
+                    LEFT JOIN messages m ON e.ref_type='message' AND m.id = e.ref_id
+                    LEFT JOIN notes    n ON e.ref_type='note'    AND n.id = e.ref_id;
+                    """;
+                double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    // created is NULL exactly when neither join matched (ref_type isn't
+                    // message/note, or the referenced row is gone) — messages.created_utc and
+                    // notes.created_utc are both NOT NULL, so this is equivalent to the old
+                    // "text IS NULL" skip without ever selecting text here.
+                    if (r["created"] is DBNull) continue;
+                    var vec = AsFloatSpan((byte[])r["vec"]);
+                    scored.Add((r.GetString(0), r.GetInt64(1), r.GetString(3), Cosine(query, qn, vec)));
+                }
             }
             // Ranking = cosine + two small nudges (each ≤ 0.08, so real similarity always
             // dominates):
@@ -252,12 +259,39 @@ public sealed partial class Db
             //    a stale one (a corrected read beats the one it replaced), but a strong old match
             //    still beats a weak new one.
             var nowUtc = DateTime.UtcNow;
-            return results
+            var top = scored
                 .OrderByDescending(x => x.Score
                     + (x.RefType == "note" ? 0.08 : 0)
                     + RecencyBoost(x.CreatedUtc, nowUtc))
                 .Take(k).ToList();
+            if (top.Count == 0) return new List<SearchHit>();
+
+            // Phase 2: hydrate text for exactly the top-k winners, per-type so a message id and
+            // a note id that happen to collide numerically never cross-contaminate.
+            var msgText = FetchTextById("messages", top.Where(x => x.RefType == "message").Select(x => x.RefId));
+            var noteText = FetchTextById("notes", top.Where(x => x.RefType == "note").Select(x => x.RefId));
+            return top.Select(x => new SearchHit(
+                x.RefType, x.RefId, x.RefType == "note" ? noteText[x.RefId] : msgText[x.RefId],
+                x.CreatedUtc, x.Score)).ToList();
         }
+    }
+
+    /// <summary>Fetch just the `text` column for a handful of ids from `messages` or `notes` (both
+    /// have an id/text column) — the phase-2 hydration step for the vector-search two-phase split.
+    /// Called while already holding <see cref="_gate"/>.</summary>
+    private Dictionary<long, string> FetchTextById(string table, IEnumerable<long> ids)
+    {
+        var list = ids.Distinct().ToList();
+        var map = new Dictionary<long, string>();
+        if (list.Count == 0) return map;
+        using var cmd = Conn.CreateCommand();
+        var ps = new string[list.Count];
+        for (int i = 0; i < list.Count; i++) ps[i] = "$id" + i;
+        cmd.CommandText = $"SELECT id, text FROM {table} WHERE id IN ({string.Join(",", ps)});";
+        for (int i = 0; i < list.Count; i++) cmd.Parameters.AddWithValue(ps[i], list[i]);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) map[r.GetInt64(0)] = r.GetString(1);
+        return map;
     }
 
     /// <summary>Recency term for search ranking: 0.08 · 2^(−age/90d). Unparseable dates get no
@@ -276,24 +310,52 @@ public sealed partial class Db
             System.Globalization.DateTimeStyles.RoundtripKind, out var d)
             ? d.ToUniversalTime() : DateTime.MinValue;
 
-    /// <summary>Search ONLY the analyst's notes (its prior analysis) — no raw chat entries.</summary>
+    /// <summary>Search ONLY the analyst's notes (its prior analysis) — no raw chat entries.
+    /// Two-phase (see <see cref="Search"/>): score on ref_id/vec alone, then hydrate text+created
+    /// for just the top-k.</summary>
     public List<SearchHit> SearchNotes(float[] query, int k)
     {
         lock (_gate)
         {
-            var results = new List<SearchHit>();
-            using var cmd = Conn.CreateCommand();
-            cmd.CommandText = """
-                SELECT e.ref_id, e.vec, n.text, n.created_utc
-                FROM embeddings e JOIN notes n ON n.id = e.ref_id
-                WHERE e.ref_type='note';
-                """;
-            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
-                results.Add(new SearchHit("note", r.GetInt64(0), r.GetString(2), r.GetString(3),
-                    Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
-            return results.OrderByDescending(x => x.Score).Take(k).ToList();
+            var scored = new List<(long RefId, double Score)>();
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    SELECT e.ref_id, e.vec
+                    FROM embeddings e JOIN notes n ON n.id = e.ref_id
+                    WHERE e.ref_type='note';
+                    """;
+                double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                    scored.Add((r.GetInt64(0), Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
+            }
+            var top = scored.OrderByDescending(x => x.Score).Take(k).ToList();
+            if (top.Count == 0) return new List<SearchHit>();
+
+            var notes = FetchNoteTextAndCreated(top.Select(x => x.RefId));
+            return top.Select(x =>
+            {
+                var (text, created) = notes[x.RefId];
+                return new SearchHit("note", x.RefId, text, created, x.Score);
+            }).ToList();
         }
+    }
+
+    /// <summary>Fetch text+created_utc for a handful of note ids — phase-2 hydration for
+    /// <see cref="SearchNotes"/>. Called while already holding <see cref="_gate"/>.</summary>
+    private Dictionary<long, (string Text, string CreatedUtc)> FetchNoteTextAndCreated(IEnumerable<long> ids)
+    {
+        var list = ids.Distinct().ToList();
+        var map = new Dictionary<long, (string, string)>();
+        if (list.Count == 0) return map;
+        using var cmd = Conn.CreateCommand();
+        var ps = new string[list.Count];
+        for (int i = 0; i < list.Count; i++) ps[i] = "$id" + i;
+        cmd.CommandText = $"SELECT id, text, created_utc FROM notes WHERE id IN ({string.Join(",", ps)});";
+        for (int i = 0; i < list.Count; i++) cmd.Parameters.AddWithValue(ps[i], list[i]);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) map[r.GetInt64(0)] = (r.GetString(1), r.GetString(2));
+        return map;
     }
 }

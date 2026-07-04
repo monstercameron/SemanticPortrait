@@ -208,44 +208,93 @@ public sealed partial class Db
     }
 
     /// <summary>Cosine top-k over NODE embeddings — the semantic tier of the resolver ladder
-    /// ("the radar thing" → distortion/rejection-radar). Score included so callers can threshold.</summary>
+    /// ("the radar thing" → distortion/rejection-radar). Score included so callers can threshold.
+    /// Two-phase: score on ref_id/vec alone, then hydrate the full GraphNode for just the top-k
+    /// (avoids materializing category/label/inferred/confidence for every node just to discard
+    /// all but k).</summary>
     public List<(GraphNode Node, double Score)> SearchNodes(float[] query, int k)
     {
         lock (_gate)
         {
-            var results = new List<(GraphNode, double)>();
-            using var cmd = Conn.CreateCommand();
-            cmd.CommandText = """
-                SELECT n.id, n.category, n.label, n.inferred, n.confidence, e.vec
-                FROM embeddings e JOIN nodes n ON n.id = e.ref_id WHERE e.ref_type='node';
-                """;
-            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
-                results.Add((new GraphNode(r.GetInt64(0), r.GetString(1), r.GetString(2),
-                    r.GetInt64(3) != 0, r.GetDouble(4)), Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
-            return results.OrderByDescending(x => x.Item2).Take(k).ToList();
+            var scored = new List<(long RefId, double Score)>();
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    SELECT e.ref_id, e.vec
+                    FROM embeddings e JOIN nodes n ON n.id = e.ref_id WHERE e.ref_type='node';
+                    """;
+                double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                    scored.Add((r.GetInt64(0), Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
+            }
+            var top = scored.OrderByDescending(x => x.Score).Take(k).ToList();
+            if (top.Count == 0) return new();
+
+            var nodes = FetchNodesById(top.Select(x => x.RefId));
+            return top.Select(x => (nodes[x.RefId], x.Score)).ToList();
         }
     }
 
-    /// <summary>Cosine top-k over EVENT embeddings — semantic timeline lookup.</summary>
+    /// <summary>Fetch full GraphNode rows for a handful of ids — phase-2 hydration for
+    /// <see cref="SearchNodes"/>. Called while already holding <see cref="_gate"/>.</summary>
+    private Dictionary<long, GraphNode> FetchNodesById(IEnumerable<long> ids)
+    {
+        var list = ids.Distinct().ToList();
+        var map = new Dictionary<long, GraphNode>();
+        if (list.Count == 0) return map;
+        using var cmd = Conn.CreateCommand();
+        var ps = new string[list.Count];
+        for (int i = 0; i < list.Count; i++) ps[i] = "$id" + i;
+        cmd.CommandText = $"SELECT id, category, label, inferred, confidence FROM nodes WHERE id IN ({string.Join(",", ps)});";
+        for (int i = 0; i < list.Count; i++) cmd.Parameters.AddWithValue(ps[i], list[i]);
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            map[r.GetInt64(0)] = new GraphNode(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetInt64(3) != 0, r.GetDouble(4));
+        return map;
+    }
+
+    /// <summary>Cosine top-k over EVENT embeddings — semantic timeline lookup.
+    /// Two-phase: score on ref_id/vec alone, then hydrate event_utc/summary for just the top-k.</summary>
     public List<(EventRow Event, double Score)> SearchEvents(float[] query, int k)
     {
         lock (_gate)
         {
-            var results = new List<(EventRow, double)>();
-            using var cmd = Conn.CreateCommand();
-            cmd.CommandText = """
-                SELECT ev.id, ev.event_utc, ev.summary, e.vec
-                FROM embeddings e JOIN events ev ON ev.id = e.ref_id WHERE e.ref_type='event';
-                """;
-            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
-                results.Add((new EventRow(r.GetInt64(0), r.GetString(1), r.GetString(2)),
-                    Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
-            return results.OrderByDescending(x => x.Item2).Take(k).ToList();
+            var scored = new List<(long RefId, double Score)>();
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    SELECT e.ref_id, e.vec
+                    FROM embeddings e JOIN events ev ON ev.id = e.ref_id WHERE e.ref_type='event';
+                    """;
+                double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                    scored.Add((r.GetInt64(0), Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
+            }
+            var top = scored.OrderByDescending(x => x.Score).Take(k).ToList();
+            if (top.Count == 0) return new();
+
+            var events = FetchEventsById(top.Select(x => x.RefId));
+            return top.Select(x => (events[x.RefId], x.Score)).ToList();
         }
+    }
+
+    /// <summary>Fetch full EventRow rows for a handful of ids — phase-2 hydration for
+    /// <see cref="SearchEvents"/>. Called while already holding <see cref="_gate"/>.</summary>
+    private Dictionary<long, EventRow> FetchEventsById(IEnumerable<long> ids)
+    {
+        var list = ids.Distinct().ToList();
+        var map = new Dictionary<long, EventRow>();
+        if (list.Count == 0) return map;
+        using var cmd = Conn.CreateCommand();
+        var ps = new string[list.Count];
+        for (int i = 0; i < list.Count; i++) ps[i] = "$id" + i;
+        cmd.CommandText = $"SELECT id, event_utc, summary FROM events WHERE id IN ({string.Join(",", ps)});";
+        for (int i = 0; i < list.Count; i++) cmd.Parameters.AddWithValue(ps[i], list[i]);
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) map[r.GetInt64(0)] = new EventRow(r.GetInt64(0), r.GetString(1), r.GetString(2));
+        return map;
     }
 
     // --- backfill support: rows written before node/event embedding existed -----
