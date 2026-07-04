@@ -17,7 +17,7 @@ public partial class Home
     private string PrivacyLine()
     {
         var masking = Microsoft.Maui.Storage.Preferences.Default.Get("masking", true);
-        var localEmb = ((PreferLocalEmbedder)Embedder).LocalActive;
+        var localEmb = Embedder is ILocalityProbe p && p.LocalActive;
         var recall = localEmb
             ? "semantic recall also runs on-device (local embeddings)"
             : $"BUT semantic recall still sends entry text to OpenAI for embeddings ({(masking ? "PII-masked first" : "masking is OFF")}) until local embeddings are installed";

@@ -80,7 +80,7 @@ public sealed class LocalEmbedder : IEmbedder, IDisposable
 /// entry text stays on-device, so a one-off OOM/corrupt-read must degrade recall (skip the embed),
 /// never silently leak the entry to OpenAI. Cloud is used ONLY when no local model is present.
 /// </summary>
-public sealed class PreferLocalEmbedder : IEmbedder
+public sealed class PreferLocalEmbedder : IEmbedder, ILocalityProbe
 {
     private readonly LocalEmbedder _local;
     private readonly IEmbedder _cloud;

@@ -291,7 +291,7 @@ public partial class Home
         var chat = provider.ProviderId == "lmstudio"
             ? "chat: local (nothing leaves)"
             : $"chat: {provider.DisplayName}{(maskOn ? " (masked)" : " (unmasked)")}";
-        var emb = ((PreferLocalEmbedder)Embedder).LocalActive
+        var emb = Embedder is ILocalityProbe p && p.LocalActive
             ? "recall: local"
             : $"recall: OpenAI embeddings{(maskOn ? " (masked)" : " (unmasked)")}";
         return $"☁ {chat} · {emb}";

@@ -175,7 +175,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton(sp => new PrivacyTools(
 			() => Microsoft.Maui.Storage.Preferences.Default.Get("masking", true),
 			sp.GetRequiredService<ProviderRegistry>(),
-			() => ((PreferLocalEmbedder)sp.GetRequiredService<IEmbedder>()).LocalActive));
+			() => sp.GetRequiredService<IEmbedder>() is ILocalityProbe lp && lp.LocalActive));
 		builder.Services.AddSingleton<ProgramTools>();
 		builder.Services.AddSingleton<GraphTools>();
 		builder.Services.AddSingleton<EntryTools>();
