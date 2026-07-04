@@ -64,6 +64,28 @@ public class ConstellationMetricsTests
     }
 
     [Fact]
+    public void Empty_token_node_and_empty_token_ref_never_match_anything()
+    {
+        // "!!!" tokenizes to an empty set (no letters/digits) for both a node label and a ref.
+        // Match() requires BOTH sides non-empty, so these must match NOTHING — not everything
+        // (the ∅⊆X trap does not apply here: Match short-circuits false on any empty side). The
+        // token-index prune must reproduce that exactly rather than treating an empty-token node
+        // as an always-candidate or an empty-token ref as "match all nodes".
+        var nodes = new[] { Node(1, "!!!"), Node(2, "work") };
+        var entries = new[]
+        {
+            Entry(10, "anxious", -0.5, 0.7, 0.6, "[\"work\"]"),   // real ref, should still hit node 2 only
+            Entry(11, "sad", -0.6, 0.5, 0.4, "[\"???\"]"),        // empty-token ref → matches nobody
+        };
+        var model = Run(nodes, Array.Empty<GraphEdge>(), entries);
+
+        Assert.Equal(0, model.Nodes.Single(n => n.NodeId == 1).ReferencingEntries);   // "!!!" node: never matched
+        Assert.Equal(1, model.Nodes.Single(n => n.NodeId == 2).ReferencingEntries);   // "work" node: only e10
+        Assert.Contains("???", model.Join.UnmatchedRefs);
+        Assert.Equal(1, model.Join.LinkedNodes);
+    }
+
+    [Fact]
     public void Contradiction_raises_sides_and_blocks_circle()
     {
         var nodes = new[] { Node(1, "A"), Node(2, "B"), Node(3, "C") };

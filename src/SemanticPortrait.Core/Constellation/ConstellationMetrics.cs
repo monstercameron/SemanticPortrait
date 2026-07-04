@@ -60,18 +60,56 @@ public static class ConstellationMetrics
 
         // Index nodes by token set once.
         var nodeTokens = nodes.ToDictionary(n => n.Id, n => Tokens(n.Label));
+
+        // Token → candidate node-ids index, so each ref only Match()es candidate nodes instead of
+        // ALL nodes (was O(refs × nodes) subset-checks). Match() requires BOTH sides non-empty to
+        // ever match (see Match() below: empty token set never matches, on either side) — so a
+        // node/ref with an empty token set simply yields no candidates/matches, identical to
+        // today (Match returns false whenever either side is empty; it does NOT match everything).
+        // Any TRUE match requires the two non-empty sets to share at least one token (one is a
+        // subset of the other, so every element of the subset side is present in both) — so
+        // unioning tokenIndex[t] over the ref's own tokens is a lossless superset of everything
+        // that could match. Match() still runs on each candidate to decide; this only prunes.
+        var tokenIndex = new Dictionary<string, List<long>>();
+        foreach (var n in nodes)
+            foreach (var t in nodeTokens[n.Id])
+            {
+                if (!tokenIndex.TryGetValue(t, out var ids)) tokenIndex[t] = ids = new List<long>();
+                ids.Add(n.Id);
+            }
+
         // Semantic-resolution memo: one ladder call per distinct ref string, not per (entry, ref).
         var semanticMemo = new Dictionary<string, IReadOnlyCollection<long>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (entry, raw) in allRefs)
         {
             var refTokens = Tokens(raw);
             bool any = false;
-            foreach (var n in nodes)
-                if (Match(nodeTokens[n.Id], refTokens))
+
+            // refTokens.Count == 0 → Match() is false for every node (empty never matches) →
+            // candidates stays null → nobody visited below, same net effect as the old loop.
+            HashSet<long>? candidates = null;
+            if (refTokens.Count > 0)
+            {
+                candidates = new HashSet<long>();
+                foreach (var t in refTokens)
+                    if (tokenIndex.TryGetValue(t, out var ids))
+                        candidates.UnionWith(ids);
+            }
+
+            // Iterate the ORIGINAL nodes collection in its original order (byte-identical
+            // visitation order to the prior triple loop) but skip anything the index proves
+            // can't match — Match() itself is unchanged and still makes the final call.
+            if (candidates is not null)
+                foreach (var n in nodes)
                 {
-                    byNode[n.Id].Add(entry);
-                    any = true;
+                    if (!candidates.Contains(n.Id)) continue;
+                    if (Match(nodeTokens[n.Id], refTokens))
+                    {
+                        byNode[n.Id].Add(entry);
+                        any = true;
+                    }
                 }
+
             if (!any && resolveRef is not null)
             {
                 // Token matching misses model-written variants ("rejection concern" vs
