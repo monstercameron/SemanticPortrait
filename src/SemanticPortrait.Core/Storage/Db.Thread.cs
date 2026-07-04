@@ -91,6 +91,38 @@ public sealed partial class Db
         }
     }
 
+    /// <summary>Newest conversational message's created_utc, or null if none. GetMessages() orders
+    /// by id ASC, so LastOrDefault(role in user/assistant) == the highest matching id == this row —
+    /// a scoped equivalent that avoids the full-table scan for callers that only need the timestamp.</summary>
+    public string? LastConversationalUtc()
+    {
+        lock (_gate)
+        {
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = "SELECT created_utc FROM messages WHERE role IN ('user','assistant') ORDER BY id DESC LIMIT 1;";
+            return cmd.ExecuteScalar() as string;
+        }
+    }
+
+    /// <summary>Conversational (user/assistant) messages with created_utc strictly after a cutoff,
+    /// id ASC — the scoped equivalent of GetMessages().Where(...).Where(...) for the in-flight
+    /// history window. Uses ix_messages_role_created.</summary>
+    public List<StoredMessage> GetRecentConversational(string cutoffIso)
+    {
+        lock (_gate)
+        {
+            var list = new List<StoredMessage>();
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = "SELECT id, role, text, created_utc, detail FROM messages WHERE role IN ('user','assistant') AND created_utc > $cutoff ORDER BY id ASC;";
+            cmd.Parameters.AddWithValue("$cutoff", cutoffIso);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                list.Add(new StoredMessage(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3),
+                    r.IsDBNull(4) ? null : r.GetString(4)));
+            return list;
+        }
+    }
+
     // --- notes (the agent's own durable, refinable insights) ------------------
     public long AddNote(string text, string utc)
     {
@@ -204,13 +236,14 @@ public sealed partial class Db
                 LEFT JOIN messages m ON e.ref_type='message' AND m.id = e.ref_id
                 LEFT JOIN notes    n ON e.ref_type='note'    AND n.id = e.ref_id;
                 """;
+            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
             using var r = cmd.ExecuteReader();
             while (r.Read())
             {
                 if (r["text"] is DBNull) continue;
                 var vec = AsFloatSpan((byte[])r["vec"]);
                 results.Add(new SearchHit(
-                    r.GetString(0), r.GetInt64(1), r.GetString(3), r.GetString(4), Cosine(query, vec)));
+                    r.GetString(0), r.GetInt64(1), r.GetString(3), r.GetString(4), Cosine(query, qn, vec)));
             }
             // Ranking = cosine + two small nudges (each ≤ 0.08, so real similarity always
             // dominates):
@@ -255,10 +288,11 @@ public sealed partial class Db
                 FROM embeddings e JOIN notes n ON n.id = e.ref_id
                 WHERE e.ref_type='note';
                 """;
+            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 results.Add(new SearchHit("note", r.GetInt64(0), r.GetString(2), r.GetString(3),
-                    Cosine(query, AsFloatSpan((byte[])r["vec"]))));
+                    Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
             return results.OrderByDescending(x => x.Score).Take(k).ToList();
         }
     }

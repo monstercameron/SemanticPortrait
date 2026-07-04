@@ -232,8 +232,8 @@ public partial class Home
             : (userText.Length > 0 ? userText + "\n" + meta : meta);
 
         // Temporal context: how long since their last message (before we add this one).
-        var prev = Database.GetMessages().LastOrDefault(m => m.Role is "user" or "assistant");
-        var sincePhrase = prev is null ? "This is their first message." : $"Time since their last message: {Elapsed(prev.CreatedUtc)}.";
+        var prevUtc = Database.LastConversationalUtc();
+        var sincePhrase = prevUtc is null ? "This is their first message." : $"Time since their last message: {Elapsed(prevUtc)}.";
 
         var userBubble = new Msg { Role = "user", Text = userText };
         _messages.Add(userBubble);
@@ -260,9 +260,7 @@ public partial class Home
 
         // In-flight history = only the last 2 days, verbatim, from the DB (real timestamps).
         var cutoff = Compaction.CutoffUtc(DateTime.UtcNow);
-        var history = Database.GetMessages()
-            .Where(m => m.Role is "user" or "assistant")
-            .Where(m => Compactor.ParseUtc(m.CreatedUtc) > cutoff)
+        var history = Database.GetRecentConversational(cutoff.ToUniversalTime().ToString("o"))
             .Select(m => new ChatMessage(m.Role == "user" ? "user" : "assistant", m.Text))
             .ToList();
 

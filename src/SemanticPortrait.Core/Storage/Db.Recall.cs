@@ -219,10 +219,11 @@ public sealed partial class Db
                 SELECT n.id, n.category, n.label, n.inferred, n.confidence, e.vec
                 FROM embeddings e JOIN nodes n ON n.id = e.ref_id WHERE e.ref_type='node';
                 """;
+            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 results.Add((new GraphNode(r.GetInt64(0), r.GetString(1), r.GetString(2),
-                    r.GetInt64(3) != 0, r.GetDouble(4)), Cosine(query, AsFloatSpan((byte[])r["vec"]))));
+                    r.GetInt64(3) != 0, r.GetDouble(4)), Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
             return results.OrderByDescending(x => x.Item2).Take(k).ToList();
         }
     }
@@ -238,10 +239,11 @@ public sealed partial class Db
                 SELECT ev.id, ev.event_utc, ev.summary, e.vec
                 FROM embeddings e JOIN events ev ON ev.id = e.ref_id WHERE e.ref_type='event';
                 """;
+            double qn = 0; for (int i = 0; i < query.Length; i++) qn += query[i] * query[i];
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 results.Add((new EventRow(r.GetInt64(0), r.GetString(1), r.GetString(2)),
-                    Cosine(query, AsFloatSpan((byte[])r["vec"]))));
+                    Cosine(query, qn, AsFloatSpan((byte[])r["vec"]))));
             return results.OrderByDescending(x => x.Item2).Take(k).ToList();
         }
     }

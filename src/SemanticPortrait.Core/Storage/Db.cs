@@ -79,6 +79,7 @@ public sealed partial class Db : IDisposable
             {
                 _conn.Open();
                 Exec($"PRAGMA key = \"{KeyVault.ToSqlCipherKey(key)}\";");
+                Exec("PRAGMA busy_timeout=5000;");
                 EnsureSchema();
             }
             catch
@@ -202,6 +203,7 @@ public sealed partial class Db : IDisposable
             if (_conn is not null) return;
             _conn = new SqliteConnection(ConnStr(_dbPath));
             _conn.Open();
+            Exec("PRAGMA busy_timeout=5000;");
             EnsureSchema();
         }
     }
@@ -275,6 +277,7 @@ public sealed partial class Db : IDisposable
     {
         _conn = new SqliteConnection(ConnStr(_dbPath));
         _conn.Open();
+        Exec("PRAGMA busy_timeout=5000;");
         EnsureSchema();
     }
 
@@ -346,6 +349,7 @@ public sealed partial class Db : IDisposable
                 summary     TEXT NOT NULL CHECK(length(trim(summary)) > 0),
                 FOREIGN KEY(message_id) REFERENCES messages(id)
             );
+            CREATE INDEX IF NOT EXISTS ix_entry_meta_utc ON entry_meta(entry_utc);
 
             -- rolling compaction of everything older than the in-flight window
             CREATE TABLE IF NOT EXISTS compaction (
@@ -379,6 +383,7 @@ public sealed partial class Db : IDisposable
                 summary     TEXT NOT NULL,
                 created_utc TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS ix_events_utc ON events(event_utc);
 
             -- calibration: falsifiable predictions scored against reality
             CREATE TABLE IF NOT EXISTS predictions (
@@ -579,5 +584,16 @@ public sealed partial class Db : IDisposable
         double dot = 0, na = 0, nb = 0;
         for (int i = 0; i < a.Length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
         return (na == 0 || nb == 0) ? 0 : dot / (Math.Sqrt(na) * Math.Sqrt(nb));
+    }
+
+    /// <summary>Same cosine as above, but with the query's squared norm precomputed by the caller
+    /// (it's fixed across every row in a Search* scan) — same summation order, so results are
+    /// bit-identical to calling the 2-arg overload per row.</summary>
+    private static double Cosine(ReadOnlySpan<float> a, double aNorm, ReadOnlySpan<float> b)
+    {
+        if (a.Length != b.Length) return -1;
+        double dot = 0, nb = 0;
+        for (int i = 0; i < a.Length; i++) { dot += a[i] * b[i]; nb += b[i] * b[i]; }
+        return (aNorm == 0 || nb == 0) ? 0 : dot / (Math.Sqrt(aNorm) * Math.Sqrt(nb));
     }
 }
