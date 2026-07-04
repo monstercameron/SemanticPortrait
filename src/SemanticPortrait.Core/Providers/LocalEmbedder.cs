@@ -74,6 +74,11 @@ public sealed class LocalEmbedder : IEmbedder, IDisposable
 /// Routes embeddings to the local model when it's installed (nothing leaves, costs nothing),
 /// else to the cloud embedder (which is masking-wrapped). Availability is re-checked per call
 /// so finishing the model download switches over without a restart.
+///
+/// Privacy invariant: when the local model IS installed, this NEVER egresses to the cloud — not
+/// even on a transient local failure. A user who installed local embeddings did so precisely so
+/// entry text stays on-device, so a one-off OOM/corrupt-read must degrade recall (skip the embed),
+/// never silently leak the entry to OpenAI. Cloud is used ONLY when no local model is present.
 /// </summary>
 public sealed class PreferLocalEmbedder : IEmbedder
 {
@@ -86,11 +91,10 @@ public sealed class PreferLocalEmbedder : IEmbedder
 
     public async Task<float[]?> EmbedAsync(string text, CancellationToken ct = default)
     {
+        // Local installed → stay on-device unconditionally. A null (local failure) skips this
+        // embed rather than falling through to the cloud; the "nothing leaves" guarantee holds.
         if (_local.IsAvailable)
-        {
-            var v = await _local.EmbedAsync(text, ct);
-            if (v is not null) return v;
-        }
+            return await _local.EmbedAsync(text, ct);
         return await _cloud.EmbedAsync(text, ct);
     }
 }

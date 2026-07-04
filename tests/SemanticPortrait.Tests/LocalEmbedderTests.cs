@@ -46,4 +46,26 @@ public class LocalEmbedderTests
         Assert.False(hybrid.LocalActive);
         Assert.NotNull(await hybrid.EmbedAsync("anything"));   // FakeEmbedder answered
     }
+
+    // Privacy invariant: once local embeddings are installed, the hybrid must NEVER reach the
+    // cloud — a user installed them so entry text stays on-device. A throwing cloud proves it's
+    // never touched. (Skips when the ~90MB model isn't downloaded, like the semantics test.)
+    [Fact]
+    public async Task Local_installed_never_touches_cloud()
+    {
+        var local = new LocalEmbedder(RepoModelDir());
+        if (!local.IsAvailable) return;   // model not present — nothing to prove
+
+        var hybrid = new PreferLocalEmbedder(local, new ThrowingEmbedder());
+        Assert.True(hybrid.LocalActive);
+        var v = await hybrid.EmbedAsync("the cloud embedder must not be called");
+        Assert.NotNull(v);                // answered locally, ThrowingEmbedder never ran
+        local.Dispose();
+    }
+
+    private sealed class ThrowingEmbedder : IEmbedder
+    {
+        public Task<float[]?> EmbedAsync(string text, CancellationToken ct = default) =>
+            throw new InvalidOperationException("cloud embedder must not be reached when local is active");
+    }
 }

@@ -113,20 +113,23 @@ What the app itself guarantees:
 - **Notifications are privacy-classified.** Before a reminder is scheduled as an OS toast, a
   classifier decides whether its text is safe for a lock screen; anything personal shows a
   generic placeholder instead — and the check *fails safe to private*.
-- **PII masking on the way out.** An optional local pass pseudonymizes names, emails, and phone
-  numbers before a cloud request leaves the machine. Treat it as harm-reduction, not anonymity —
-  freeform journal content can still re-identify you.
+- **PII masking on the way out.** An optional local pass pseudonymizes emails, phone numbers and
+  ID numbers — **not names** — before a cloud request leaves the machine. Treat it as
+  harm-reduction, not anonymity — freeform journal content (names included) can still re-identify
+  you.
 - **Local embeddings.** Semantic recall can run on an on-device MiniLM model, so the index that
-  knows everything about you is built without a network call.
+  knows everything about you is built without a network call. Until you install it, semantic
+  recall sends entry text to OpenAI for embeddings (masked by default).
 
 ### Going private: local & self-hosted inference
 
 If you want nothing to leave your machine, SemanticPortrait speaks the OpenAI-compatible chat
 protocol to **any inference server you point it at**:
 
-- **[LM Studio](https://lmstudio.ai/)** is supported out of the box — run a local model, and the
-  entire loop (chat, analysis, recall) stays on your machine. Nothing leaves, so the masking
-  layer isn't even needed on that path.
+- **[LM Studio](https://lmstudio.ai/)** is supported out of the box — run a local model and chat
+  and analysis stay on your machine. Semantic recall stays local **only once you also install
+  local embeddings** (**⋯ → Local embeddings**); until then, entry text still goes to OpenAI for
+  embeddings (masked by default). With both a local model *and* local embeddings, nothing leaves.
 - **Any OpenAI-compatible endpoint** works the same way — Ollama, llama.cpp's server, vLLM,
   LiteLLM, a box in your closet — the base URL is configurable in **⋯ → LLM settings**.
 - **Third-party "private-ish" hosts** (a VPS you rent, a privacy-marketed inference service) sit
