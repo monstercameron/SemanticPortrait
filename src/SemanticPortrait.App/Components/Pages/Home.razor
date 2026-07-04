@@ -130,11 +130,10 @@
         <div class="sp-brand">
             <span class="sp-mark">✦</span>
             <span class="sp-name">SemanticPortrait</span>
-            @{ var who = Profile.Get("name"); }
-            @if (!string.IsNullOrWhiteSpace(who))
+            @if (!string.IsNullOrWhiteSpace(_who))
             {
                 <span class="sp-brand-sep">·</span>
-                <span class="sp-brand-who">@who</span>
+                <span class="sp-brand-who">@_who</span>
             }
         </div>
         <div class="sp-topbar-right">

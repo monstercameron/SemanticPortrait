@@ -13,11 +13,26 @@ public partial class Home
     private List<(long Id, string WhenUtc, string Snippet)> _searchHits = new();
 
     private void OpenSearch() { _showSearch = true; _searchQuery = ""; _searchHits = new(); _focusNext = false; }
+
+    // Debounced off the render thread: SearchEntries is a LIKE full-scan under the DB lock, and
+    // running it synchronously on every @oninput keystroke blocked the render thread. _searchQuery
+    // (the input + "N matches" text) stays synchronous; only the scan is delayed ~150ms and moved
+    // to a background task. A settled query still lands on the same result set SearchEntries would
+    // have produced synchronously.
+    private System.Threading.CancellationTokenSource? _searchCts;
     private void RunSearch(ChangeEventArgs e)
     {
         _searchQuery = e.Value?.ToString() ?? "";
-        _searchHits = Database.IsOpen && _searchQuery.Trim().Length > 0
-            ? Database.SearchEntries(_searchQuery) : new();
+        _searchCts?.Cancel();
+        var cts = _searchCts = new System.Threading.CancellationTokenSource();
+        var q = _searchQuery;
+        _ = Task.Run(async () =>
+        {
+            try { await Task.Delay(150, cts.Token); } catch (TaskCanceledException) { return; }
+            if (cts.IsCancellationRequested) return;
+            var hits = Database.IsOpen && q.Trim().Length > 0 ? Database.SearchEntries(q) : new();
+            await InvokeAsync(() => { if (!cts.IsCancellationRequested) { _searchHits = hits; StateHasChanged(); } });
+        });
     }
 
     /// <summary>Jump the thread to a matched entry: un-clear the view if needed, close search,

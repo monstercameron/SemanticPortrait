@@ -48,6 +48,11 @@ public partial class Home
     private string _draft = "";
     private bool _busy;
 
+    // Cached topbar name: Profile.Get("name") is a locked SQLite point-query — avoid running it
+    // on every render (30fps during streaming, once per keystroke). Refreshed in LoadThread and
+    // again after Send() completes (set_profile_field, the only writer, runs during that turn).
+    private string? _who;
+
     private bool _showDev;
     private bool _showMenu;
 
@@ -165,6 +170,7 @@ public partial class Home
     {
         _messages.Clear();
         _clearedBefore = 0;   // a fresh thread load always shows everything
+        _who = Profile.Get("name");
         var withPhotos = Database.MessageIdsWithAttachments();
         foreach (var m in Database.GetMessages())
         {

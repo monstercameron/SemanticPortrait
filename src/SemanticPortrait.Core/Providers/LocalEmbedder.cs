@@ -31,37 +31,41 @@ public sealed class LocalEmbedder : IEmbedder, IDisposable
         {
             try
             {
+                InferenceSession session;
+                BertTokenizer tokenizer;
                 lock (_gate)
                 {
                     _tokenizer ??= BertTokenizer.Create(VocabPath);
                     _session ??= new InferenceSession(ModelPath);
-
-                    // BertTokenizer adds [CLS]/[SEP] itself.
-                    var ids = _tokenizer.EncodeToIds(text, MaxTokens, out _, out _).Select(i => (long)i).ToArray();
-                    var n = ids.Length;
-                    var inputIds = new DenseTensor<long>(ids, new[] { 1, n });
-                    var mask = new DenseTensor<long>(Enumerable.Repeat(1L, n).ToArray(), new[] { 1, n });
-                    var types = new DenseTensor<long>(new long[n], new[] { 1, n });
-
-                    using var results = _session.Run(new[]
-                    {
-                        NamedOnnxValue.CreateFromTensor("input_ids", inputIds),
-                        NamedOnnxValue.CreateFromTensor("attention_mask", mask),
-                        NamedOnnxValue.CreateFromTensor("token_type_ids", types),
-                    });
-                    // last_hidden_state: [1, n, 384] → mean-pool over tokens → L2 normalize
-                    var hidden = results.First().AsTensor<float>();
-                    var dim = hidden.Dimensions[2];
-                    var vec = new float[dim];
-                    for (int t = 0; t < n; t++)
-                        for (int d = 0; d < dim; d++)
-                            vec[d] += hidden[0, t, d];
-                    var norm = 0.0;
-                    for (int d = 0; d < dim; d++) { vec[d] /= n; norm += vec[d] * vec[d]; }
-                    norm = Math.Sqrt(norm);
-                    if (norm > 0) for (int d = 0; d < dim; d++) vec[d] = (float)(vec[d] / norm);
-                    return (float[]?)vec;
+                    tokenizer = _tokenizer;
+                    session = _session;
                 }
+
+                // BertTokenizer adds [CLS]/[SEP] itself.
+                var ids = tokenizer.EncodeToIds(text, MaxTokens, out _, out _).Select(i => (long)i).ToArray();
+                var n = ids.Length;
+                var inputIds = new DenseTensor<long>(ids, new[] { 1, n });
+                var mask = new DenseTensor<long>(Enumerable.Repeat(1L, n).ToArray(), new[] { 1, n });
+                var types = new DenseTensor<long>(new long[n], new[] { 1, n });
+
+                using var results = session.Run(new[]
+                {
+                    NamedOnnxValue.CreateFromTensor("input_ids", inputIds),
+                    NamedOnnxValue.CreateFromTensor("attention_mask", mask),
+                    NamedOnnxValue.CreateFromTensor("token_type_ids", types),
+                });
+                // last_hidden_state: [1, n, 384] → mean-pool over tokens → L2 normalize
+                var hidden = results.First().AsTensor<float>();
+                var dim = hidden.Dimensions[2];
+                var vec = new float[dim];
+                for (int t = 0; t < n; t++)
+                    for (int d = 0; d < dim; d++)
+                        vec[d] += hidden[0, t, d];
+                var norm = 0.0;
+                for (int d = 0; d < dim; d++) { vec[d] /= n; norm += vec[d] * vec[d]; }
+                norm = Math.Sqrt(norm);
+                if (norm > 0) for (int d = 0; d < dim; d++) vec[d] = (float)(vec[d] / norm);
+                return (float[]?)vec;
             }
             catch { return null; }   // corrupt model / OOM → callers fall back gracefully
         }, ct);
