@@ -52,13 +52,30 @@ public partial class Home
     private static string MoodPath(IReadOnlyList<(DateTime LocalDate, double Valence, double Energy)> series, bool energy)
     {
         if (series.Count < 2) return "";
-        var sb = new System.Text.StringBuilder();
+        var pts = new (double X, double Y)[series.Count];
         for (var i = 0; i < series.Count; i++)
         {
-            var x = series.Count == 1 ? 0 : 100.0 * i / (series.Count - 1);
+            var x = 100.0 * i / (series.Count - 1);
             var val = energy ? Math.Clamp(series[i].Energy, 0, 1) : (Math.Clamp(series[i].Valence, -1, 1) + 1) / 2;
-            var y = 100 - val * 100;
-            sb.Append(i == 0 ? "M" : "L").Append(x.ToString("0.#")).Append(' ').Append(y.ToString("0.#")).Append(' ');
+            pts[i] = (x, 100 - val * 100);
+        }
+        // Catmull-Rom → cubic Bézier so the trend reads as a gentle curve, not a jagged zig-zag.
+        static string N(double d) => d.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        var sb = new System.Text.StringBuilder();
+        sb.Append('M').Append(N(pts[0].X)).Append(' ').Append(N(pts[0].Y)).Append(' ');
+        for (var i = 0; i < pts.Length - 1; i++)
+        {
+            var p0 = pts[i == 0 ? 0 : i - 1];
+            var p1 = pts[i];
+            var p2 = pts[i + 1];
+            var p3 = pts[i + 2 < pts.Length ? i + 2 : pts.Length - 1];
+            var c1x = p1.X + (p2.X - p0.X) / 6.0;
+            var c1y = p1.Y + (p2.Y - p0.Y) / 6.0;
+            var c2x = p2.X - (p3.X - p1.X) / 6.0;
+            var c2y = p2.Y - (p3.Y - p1.Y) / 6.0;
+            sb.Append('C').Append(N(c1x)).Append(' ').Append(N(c1y)).Append(' ')
+              .Append(N(c2x)).Append(' ').Append(N(c2y)).Append(' ')
+              .Append(N(p2.X)).Append(' ').Append(N(p2.Y)).Append(' ');
         }
         return sb.ToString().Trim();
     }
@@ -105,11 +122,14 @@ public partial class Home
     }
 
     // Calendar tint on a colorblind-SAFE diverging scale (no red↔green): negative valence →
-    // cool slate-blue, positive → warm amber; magnitude drives opacity so the tints actually read.
+    // violet, positive → emerald; magnitude drives opacity so the tints actually read. This
+    // palette is deliberately DISTINCT from the mood-chart lines (valence = cyan #38bdf8,
+    // energy = amber #ffa840) since both render together in the Insights panel — an amber tint
+    // here read as the energy line.
     private static string DayTint(double meanValence)
     {
         var v = Math.Clamp(meanValence, -1, 1);
         var a = (0.20 + 0.45 * Math.Abs(v)).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-        return v >= 0 ? $"rgba(255,168,64,{a})" : $"rgba(90,150,220,{a})";
+        return v >= 0 ? $"rgba(52,211,153,{a})" : $"rgba(167,139,250,{a})";
     }
 }

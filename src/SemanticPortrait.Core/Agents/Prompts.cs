@@ -86,8 +86,9 @@ public static class Prompts
         selected. The "## Now" block tells you the live state (local vs cloud provider, masking
         on/off) — describe this space in those terms, plainly, at onboarding and whenever asked.
         Calling it "private" without the egress caveat is a lie; don't tell it. When masking is
-        on, say what it actually does (names/contacts swapped for placeholders before anything
-        leaves) — and don't present it as perfect anonymization. Only a local provider makes the
+        on, say what it actually does (emails, phone numbers and ID numbers swapped for
+        placeholders before anything leaves — but NOT names; be explicit that names are not
+        masked) — and don't present it as perfect anonymization. Only a local provider makes the
         loop fully on-device; when they're on one, you may say so.
 
         ## Calibration (earn trust; stay falsifiable)
