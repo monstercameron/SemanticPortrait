@@ -103,45 +103,50 @@ public sealed partial class Db
         lock (_gate)
         {
             var now = DateTime.UtcNow.ToString("o");
-            using (var cmd = Conn.CreateCommand())
+            InTransaction(tx =>
             {
-                cmd.CommandText = """
-                    INSERT INTO usage(model, input_tok, output_tok, calls, cost_usd, updated_utc)
-                    VALUES($m,$i,$o,1,$c,$u)
-                    ON CONFLICT(model) DO UPDATE SET
-                        input_tok  = input_tok  + $i,
-                        output_tok = output_tok + $o,
-                        calls      = calls      + 1,
-                        cost_usd   = cost_usd   + $c,
-                        updated_utc = $u;
-                    """;
-                cmd.Parameters.AddWithValue("$m", model);
-                cmd.Parameters.AddWithValue("$i", input);
-                cmd.Parameters.AddWithValue("$o", output);
-                cmd.Parameters.AddWithValue("$c", costUsd);
-                cmd.Parameters.AddWithValue("$u", now);
-                cmd.ExecuteNonQuery();
-            }
-            using (var cmd = Conn.CreateCommand())
-            {
-                cmd.CommandText = """
-                    INSERT INTO usage_monthly(period, model, input_tok, output_tok, calls, cost_usd, updated_utc)
-                    VALUES($p,$m,$i,$o,1,$c,$u)
-                    ON CONFLICT(period, model) DO UPDATE SET
-                        input_tok  = input_tok  + $i,
-                        output_tok = output_tok + $o,
-                        calls      = calls      + 1,
-                        cost_usd   = cost_usd   + $c,
-                        updated_utc = $u;
-                    """;
-                cmd.Parameters.AddWithValue("$p", CurrentMonth());
-                cmd.Parameters.AddWithValue("$m", model);
-                cmd.Parameters.AddWithValue("$i", input);
-                cmd.Parameters.AddWithValue("$o", output);
-                cmd.Parameters.AddWithValue("$c", costUsd);
-                cmd.Parameters.AddWithValue("$u", now);
-                cmd.ExecuteNonQuery();
-            }
+                using (var cmd = Conn.CreateCommand())
+                {
+                    cmd.Transaction = tx;
+                    cmd.CommandText = """
+                        INSERT INTO usage(model, input_tok, output_tok, calls, cost_usd, updated_utc)
+                        VALUES($m,$i,$o,1,$c,$u)
+                        ON CONFLICT(model) DO UPDATE SET
+                            input_tok  = input_tok  + $i,
+                            output_tok = output_tok + $o,
+                            calls      = calls      + 1,
+                            cost_usd   = cost_usd   + $c,
+                            updated_utc = $u;
+                        """;
+                    cmd.Parameters.AddWithValue("$m", model);
+                    cmd.Parameters.AddWithValue("$i", input);
+                    cmd.Parameters.AddWithValue("$o", output);
+                    cmd.Parameters.AddWithValue("$c", costUsd);
+                    cmd.Parameters.AddWithValue("$u", now);
+                    cmd.ExecuteNonQuery();
+                }
+                using (var cmd = Conn.CreateCommand())
+                {
+                    cmd.Transaction = tx;
+                    cmd.CommandText = """
+                        INSERT INTO usage_monthly(period, model, input_tok, output_tok, calls, cost_usd, updated_utc)
+                        VALUES($p,$m,$i,$o,1,$c,$u)
+                        ON CONFLICT(period, model) DO UPDATE SET
+                            input_tok  = input_tok  + $i,
+                            output_tok = output_tok + $o,
+                            calls      = calls      + 1,
+                            cost_usd   = cost_usd   + $c,
+                            updated_utc = $u;
+                        """;
+                    cmd.Parameters.AddWithValue("$p", CurrentMonth());
+                    cmd.Parameters.AddWithValue("$m", model);
+                    cmd.Parameters.AddWithValue("$i", input);
+                    cmd.Parameters.AddWithValue("$o", output);
+                    cmd.Parameters.AddWithValue("$c", costUsd);
+                    cmd.Parameters.AddWithValue("$u", now);
+                    cmd.ExecuteNonQuery();
+                }
+            });
         }
     }
 

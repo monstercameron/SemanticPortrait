@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 
 namespace SemanticPortrait.Core;
 
-public sealed partial class Db
+public sealed partial class Db : IDisposable
 {
     private SqliteConnection? _conn;
     private readonly object _gate = new();
@@ -12,6 +12,31 @@ public sealed partial class Db
     // (analyst / compactor / reminder tick) races the user locking the app.
     private SqliteConnection Conn =>
         _conn ?? throw new InvalidOperationException("database is locked (connection closed)");
+
+    // Runs body inside a single transaction on the shared connection, so a multi-statement write
+    // is all-or-nothing. Caller MUST already hold _gate. Every command created inside body MUST
+    // set `cmd.Transaction = tx` — Microsoft.Data.Sqlite throws otherwise (a command on a
+    // connection with a pending transaction requires that transaction to be attached explicitly).
+    private void InTransaction(Action<SqliteTransaction> body)
+    {
+        using var tx = Conn.BeginTransaction();
+        body(tx);
+        tx.Commit();
+    }
+
+    private T InTransaction<T>(Func<SqliteTransaction, T> body)
+    {
+        using var tx = Conn.BeginTransaction();
+        var result = body(tx);
+        tx.Commit();
+        return result;
+    }
+
+    /// <summary>Idempotent. Closes the underlying connection if still open.</summary>
+    public void Dispose()
+    {
+        lock (_gate) { _conn?.Dispose(); _conn = null; }
+    }
 
     static Db() => SQLitePCL.Batteries_V2.Init();   // register the SQLCipher provider
 
@@ -505,15 +530,26 @@ public sealed partial class Db
         {
             // Delete each table independently; tolerate a missing table (e.g. sqlite_sequence
             // doesn't exist until an AUTOINCREMENT row has been inserted). No VACUUM (it can fail
-            // on an open SQLCipher connection and isn't needed to clear data).
-            foreach (var t in new[] { "embeddings", "notes", "messages", "edges", "nodes",
-                                      "entry_meta", "compaction", "predictions", "events",
-                                      "todos", "reminders", "usage", "usage_monthly", "notifications",
-                                      "aliases", "settings", "profile",
-                                      "entities", "entity_aliases", "metrics", "import_ledger", "pending_analyses", "sqlite_sequence" })
+            // on an open SQLCipher connection and isn't needed to clear data). All-or-nothing:
+            // wrapped in one transaction so a mid-loop failure can't leave a partially-wiped DB.
+            InTransaction(tx =>
             {
-                try { Exec($"DELETE FROM {t};"); } catch { /* table may not exist */ }
-            }
+                foreach (var t in new[] { "embeddings", "notes", "messages", "edges", "nodes",
+                                          "entry_meta", "compaction", "predictions", "events",
+                                          "todos", "reminders", "usage", "usage_monthly", "notifications",
+                                          "aliases", "settings", "profile",
+                                          "entities", "entity_aliases", "metrics", "import_ledger", "pending_analyses", "sqlite_sequence" })
+                {
+                    try
+                    {
+                        using var cmd = Conn.CreateCommand();
+                        cmd.Transaction = tx;
+                        cmd.CommandText = $"DELETE FROM {t};";
+                        cmd.ExecuteNonQuery();
+                    }
+                    catch { /* table may not exist */ }
+                }
+            });
         }
     }
 

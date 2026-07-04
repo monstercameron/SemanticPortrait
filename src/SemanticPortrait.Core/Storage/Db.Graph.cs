@@ -89,39 +89,45 @@ public sealed partial class Db
         {
             canonical = canonical.Trim();
             var now = DateTime.UtcNow.ToString("o");
-            using (var up = Conn.CreateCommand())
+            return InTransaction(tx =>
             {
-                up.CommandText = """
-                    INSERT INTO entities(canonical_name, kind, created_utc) VALUES($c,$k,$now)
-                    ON CONFLICT(canonical_name) DO NOTHING;
-                    """;
-                up.Parameters.AddWithValue("$c", canonical);
-                up.Parameters.AddWithValue("$k", kind);
-                up.Parameters.AddWithValue("$now", now);
-                up.ExecuteNonQuery();
-            }
-            long entityId;
-            using (var sel = Conn.CreateCommand())
-            {
-                sel.CommandText = "SELECT id FROM entities WHERE canonical_name=$c COLLATE NOCASE;";
-                sel.Parameters.AddWithValue("$c", canonical);
-                entityId = (long)(sel.ExecuteScalar() ?? 0L);
-            }
-            if (!string.IsNullOrWhiteSpace(mention) &&
-                !string.Equals(mention.Trim(), canonical, StringComparison.OrdinalIgnoreCase))
-            {
-                using var ins = Conn.CreateCommand();
-                ins.CommandText = """
-                    INSERT INTO entity_aliases(entity_id, mention, created_utc) VALUES($e,$m,$now)
-                    ON CONFLICT(mention) DO NOTHING;
-                    """;
-                ins.Parameters.AddWithValue("$e", entityId);
-                ins.Parameters.AddWithValue("$m", mention.Trim());
-                ins.Parameters.AddWithValue("$now", now);
-                ins.ExecuteNonQuery();
-                MergeNodesByLabel(mention.Trim(), canonical);
-            }
-            return entityId;
+                using (var up = Conn.CreateCommand())
+                {
+                    up.Transaction = tx;
+                    up.CommandText = """
+                        INSERT INTO entities(canonical_name, kind, created_utc) VALUES($c,$k,$now)
+                        ON CONFLICT(canonical_name) DO NOTHING;
+                        """;
+                    up.Parameters.AddWithValue("$c", canonical);
+                    up.Parameters.AddWithValue("$k", kind);
+                    up.Parameters.AddWithValue("$now", now);
+                    up.ExecuteNonQuery();
+                }
+                long entityId;
+                using (var sel = Conn.CreateCommand())
+                {
+                    sel.Transaction = tx;
+                    sel.CommandText = "SELECT id FROM entities WHERE canonical_name=$c COLLATE NOCASE;";
+                    sel.Parameters.AddWithValue("$c", canonical);
+                    entityId = (long)(sel.ExecuteScalar() ?? 0L);
+                }
+                if (!string.IsNullOrWhiteSpace(mention) &&
+                    !string.Equals(mention.Trim(), canonical, StringComparison.OrdinalIgnoreCase))
+                {
+                    using var ins = Conn.CreateCommand();
+                    ins.Transaction = tx;
+                    ins.CommandText = """
+                        INSERT INTO entity_aliases(entity_id, mention, created_utc) VALUES($e,$m,$now)
+                        ON CONFLICT(mention) DO NOTHING;
+                        """;
+                    ins.Parameters.AddWithValue("$e", entityId);
+                    ins.Parameters.AddWithValue("$m", mention.Trim());
+                    ins.Parameters.AddWithValue("$now", now);
+                    ins.ExecuteNonQuery();
+                    MergeNodesByLabel(mention.Trim(), canonical, tx);
+                }
+                return entityId;
+            });
         }
     }
 
@@ -145,10 +151,12 @@ public sealed partial class Db
 
     // A late alias registration can leave two nodes for the same entity (one under the mention,
     // one under the canonical). Re-point the mention-node's edges at the canonical node and
-    // delete the duplicate. Called under _gate.
-    private void MergeNodesByLabel(string fromLabel, string toLabel)
+    // delete the duplicate. Called under _gate, and always inside the caller's transaction (tx)
+    // so the repoint+delete-edges+delete-embeddings+delete-node group per pair is all-or-nothing.
+    private void MergeNodesByLabel(string fromLabel, string toLabel, SqliteTransaction tx)
     {
         using var find = Conn.CreateCommand();
+        find.Transaction = tx;
         find.CommandText = """
             SELECT f.id, t.id FROM nodes f
             JOIN nodes t ON t.category = f.category AND t.label = $to COLLATE NOCASE
@@ -163,6 +171,7 @@ public sealed partial class Db
         foreach (var (from, to) in pairs)
         {
             using var fix = Conn.CreateCommand();
+            fix.Transaction = tx;
             fix.CommandText = """
                 UPDATE OR IGNORE edges SET src_id=$to WHERE src_id=$from;
                 UPDATE OR IGNORE edges SET dst_id=$to WHERE dst_id=$from;
@@ -234,16 +243,20 @@ public sealed partial class Db
     {
         lock (_gate)
         {
-            using var cmd = Conn.CreateCommand();
-            // Also drop the node's embedding — a dangling 'node' embedding would keep resolving
-            // semantic lookups to a node that no longer exists.
-            cmd.CommandText = """
-                DELETE FROM edges WHERE src_id=$id OR dst_id=$id;
-                DELETE FROM embeddings WHERE ref_type='node' AND ref_id=$id;
-                DELETE FROM nodes WHERE id=$id;
-                """;
-            cmd.Parameters.AddWithValue("$id", id);
-            cmd.ExecuteNonQuery();
+            InTransaction(tx =>
+            {
+                using var cmd = Conn.CreateCommand();
+                cmd.Transaction = tx;
+                // Also drop the node's embedding — a dangling 'node' embedding would keep resolving
+                // semantic lookups to a node that no longer exists.
+                cmd.CommandText = """
+                    DELETE FROM edges WHERE src_id=$id OR dst_id=$id;
+                    DELETE FROM embeddings WHERE ref_type='node' AND ref_id=$id;
+                    DELETE FROM nodes WHERE id=$id;
+                    """;
+                cmd.Parameters.AddWithValue("$id", id);
+                cmd.ExecuteNonQuery();
+            });
         }
     }
 
