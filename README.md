@@ -18,6 +18,21 @@ about to believe something about yourself that isn't so.
 
 ---
 
+## Screenshots
+
+**Your journal as a living constellation.** Every star is one thing the analyst has learned about
+you; each cluster is a theme, and a star's position encodes its energy (↕) and mood (↔).
+*(Shown with sample data — your real map stays encrypted on your device.)*
+
+![The constellation "map" view, rendered from sample data](assets/constellation-sample.png)
+
+**One lock over everything.** The vault is SQLCipher (AES-256) encrypted at rest and opened only
+by Windows Hello or your passphrase — the database stays closed while locked.
+
+![The lock screen](assets/lock-screen.png)
+
+---
+
 ## The idea
 
 Turn an ongoing conversation into a living, self-correcting model of who you are — and let it
