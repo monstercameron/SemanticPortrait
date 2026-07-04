@@ -575,7 +575,7 @@
                 <div class="sp-stat-row">
                     <div class="sp-stat"><b>@stats.Item1</b><span>entries · 60 days</span></div>
                     <div class="sp-stat"><b>@stats.Item2.ToString("N0")</b><span>words written</span></div>
-                    <div class="sp-stat"><b>@stats.Item3</b><span>of 60 days</span></div>
+                    <div class="sp-stat"><b>@stats.Item3</b><span>days written · of 60</span></div>
                 </div>
                 <p class="sp-muted" style="margin:2px 0 14px">Showing up, not a streak. Every day you write is enough.</p>
 
@@ -585,16 +585,16 @@
                 {
                     <svg class="sp-mood-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                         <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,.12)" stroke-width="0.4" />
-                        <path d="@MoodPath(mood, energy: false)" fill="none" stroke="#19d3ff" stroke-width="1.1" vector-effect="non-scaling-stroke" />
-                        <path d="@MoodPath(mood, energy: true)" fill="none" stroke="#ffb347" stroke-width="0.8" stroke-dasharray="2 2" vector-effect="non-scaling-stroke" opacity="0.7" />
+                        <path class="sp-mood-line-v" d="@MoodPath(mood, energy: false)" fill="none" stroke-width="1.1" vector-effect="non-scaling-stroke" />
+                        <path class="sp-mood-line-e" d="@MoodPath(mood, energy: true)" fill="none" stroke-width="0.8" stroke-dasharray="2 2" vector-effect="non-scaling-stroke" opacity="0.7" />
                     </svg>
                     <div class="sp-mood-axis">
                         <span>@mood[0].LocalDate.ToString("MMM d, yyyy")</span>
                         <span>@mood[^1].LocalDate.ToString("MMM d, yyyy")</span>
                     </div>
-                    <p class="sp-muted" style="font-size:11px">
-                        <span style="color:#19d3ff">— valence</span> (up = positive) ·
-                        <span style="color:#ffb347">- - energy</span> · @mood.Count entries
+                    <p class="sp-mood-legend">
+                        <span class="sp-mood-val">— valence</span> (up = positive) ·
+                        <span class="sp-mood-en">- - energy</span> · last 90 days · @mood.Count entries with mood
                     </p>
                 }
                 else { <p class="sp-muted">Not enough entries yet to chart.</p> }

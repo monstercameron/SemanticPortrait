@@ -219,15 +219,24 @@ body {
 .sp-stat span { font-size: 11px; color: var(--muted); }
 .sp-insight-h { font-weight: 600; color: var(--accent); margin: 16px 0 6px; }
 .sp-mood-svg { width: 100%; height: 120px; display: block; }
+/* data-viz series: cyan valence, amber energy — one defined pair, not ad-hoc hexes */
+.sp-mood-line-v { stroke: #38bdf8; }
+.sp-mood-line-e { stroke: #ffa840; }
+.sp-mood-legend { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+.sp-mood-legend .sp-mood-val { color: #38bdf8; }
+.sp-mood-legend .sp-mood-en { color: #ffa840; }
 .sp-cal-head { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 6px; }
 .sp-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .sp-cal-dow { text-align: center; font-size: 10px; color: var(--muted); padding-bottom: 2px; }
+/* every in-month day gets a baseline chip so the grid reads AS a grid (not floating numbers) */
 .sp-cal-cell {
     aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; color: var(--muted); border-radius: 8px; border: 1px solid transparent;
+    font-size: 12px; color: var(--muted); border-radius: 8px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
 }
-.sp-cal-cell.on { color: var(--text); border-color: var(--line); font-weight: 600; cursor: pointer; }
-.sp-cal-cell.on:hover { border-color: var(--accent); }
+.sp-cal-cell:empty { background: transparent; border-color: transparent; }   /* leading blanks */
+.sp-cal-cell.on { color: var(--text); font-weight: 600; cursor: pointer; }
+.sp-cal-cell.on:hover { outline: 1px solid var(--accent); }
 .sp-mood-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; }
 .sp-search-hit mark { background: rgba(255,210,63,.30); color: var(--text); border-radius: 3px; padding: 0 1px; }
 

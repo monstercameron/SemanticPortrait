@@ -80,18 +80,26 @@ public sealed partial class Db
         }
     }
 
-    /// <summary>Per-entry (localDate, valence, energy) for the mood-over-time chart, oldest first.</summary>
-    public List<(DateTime LocalDate, double Valence, double Energy)> MoodSeries()
+    /// <summary>Per-entry (localDate, valence, energy) for the mood chart, oldest first, bounded to
+    /// the last <paramref name="days"/> so one stray old/imported date can't crush the axis into an
+    /// unreadable multi-year span. Future-dated and unparseable rows are dropped (data hygiene).</summary>
+    public List<(DateTime LocalDate, double Valence, double Energy)> MoodSeries(int days = 90)
     {
         lock (_gate)
         {
             var list = new List<(DateTime, double, double)>();
+            var nowLocal = DateTime.Now;
+            var since = nowLocal.Date.AddDays(-days);
             using var cmd = Conn.CreateCommand();
             cmd.CommandText = "SELECT entry_utc, valence, energy FROM entry_meta ORDER BY entry_utc;";
             using var r = cmd.ExecuteReader();
             while (r.Read())
                 if (DateTime.TryParse(r.GetString(0), null, System.Globalization.DateTimeStyles.RoundtripKind, out var d))
-                    list.Add((d.ToLocalTime(), r.GetDouble(1), r.GetDouble(2)));
+                {
+                    var local = d.ToLocalTime();
+                    if (local.Date >= since && local <= nowLocal.AddDays(1))   // in-window, not future
+                        list.Add((local, r.GetDouble(1), r.GetDouble(2)));
+                }
             return list;
         }
     }

@@ -104,10 +104,12 @@ public partial class Home
             "— an opening, not an assignment. No preamble.]");
     }
 
+    // Calendar tint on a colorblind-SAFE diverging scale (no red↔green): negative valence →
+    // cool slate-blue, positive → warm amber; magnitude drives opacity so the tints actually read.
     private static string DayTint(double meanValence)
     {
-        var t = Math.Clamp((meanValence + 1) / 2, 0, 1);   // 0 = red, 1 = green
-        int r = (int)(220 - t * 140), g = (int)(80 + t * 140);
-        return $"rgba({r},{g},90,0.32)";
+        var v = Math.Clamp(meanValence, -1, 1);
+        var a = (0.20 + 0.45 * Math.Abs(v)).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        return v >= 0 ? $"rgba(255,168,64,{a})" : $"rgba(90,150,220,{a})";
     }
 }
