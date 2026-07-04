@@ -280,7 +280,7 @@ body {
     display: flex; align-items: flex-start; gap: 10px; text-align: left;
     margin: 8px 0 14px; cursor: pointer;
 }
-.sp-mask-consent input[type=checkbox] { margin-top: 3px; width: 16px; height: 16px; flex: none; }
+.sp-mask-consent input[type=checkbox] { margin-top: 3px; width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
 .sp-mask-consent > span > strong { display: block; font-size: 13px; color: var(--text); }
 .sp-mask-consent small { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
 /* the inline "not" emphasis inside the small print must stay inline, just brighter */

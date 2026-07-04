@@ -26,7 +26,7 @@ public static class ModelCatalog
         }),
         new("lmstudio", "LM Studio · Local", "lmstudio", "", "https://lmstudio.ai", true, new LlmModel[]
         {
-            new("local-model", "Loaded model", new ModelPricing(0, 0, 0), "100% offline · free"),
+            new("local-model", "Loaded model", new ModelPricing(0, 0, 0), "chat runs offline · free"),
         }, Local: true),
         new("anthropic", "Anthropic · Claude", "anthropic", "sk-ant-…", "https://console.anthropic.com/settings/keys", true, new LlmModel[]
         {

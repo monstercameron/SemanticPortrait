@@ -585,9 +585,9 @@
 
                 @* showing up — facts, not a scoreboard *@
                 <div class="sp-stat-row">
-                    <div class="sp-stat"><b>@stats.Item1</b><span>entries · 90 days</span></div>
+                    <div class="sp-stat"><b>@stats.Item1</b><span>entries · last 90 days</span></div>
                     <div class="sp-stat"><b>@stats.Item2.ToString("N0")</b><span>words written</span></div>
-                    <div class="sp-stat"><b>@stats.Item3</b><span>days written · of 90</span></div>
+                    <div class="sp-stat"><b>@stats.Item3</b><span>active days · of 90</span></div>
                 </div>
                 <p class="sp-muted" style="margin:2px 0 14px">Showing up, not a streak. Every day you write is enough.</p>
 
@@ -618,6 +618,11 @@
                     <button class="sp-iconbtn" @onclick="CalNext" title="Next month"
                             disabled="@(_calMonth >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1))">›</button>
                 </div>
+                <p class="sp-cal-legend">
+                    Day tint = that day's mood:
+                    <span class="sp-cal-key sp-cal-key-pos"></span> higher-mood ·
+                    <span class="sp-cal-key sp-cal-key-neg"></span> lower-mood · deeper = stronger
+                </p>
                 <div class="sp-cal-grid">
                     @foreach (var dow in new[] { "S", "M", "T", "W", "T", "F", "S" })
                     {
@@ -639,11 +644,6 @@
                              @onclick="@(has ? (Func<Task>)(() => JumpToDay(day)) : (Func<Task>)(() => Task.CompletedTask))">@day</div>
                     }
                 </div>
-                <p class="sp-cal-legend">
-                    A day's tint shows its mood:
-                    <span class="sp-cal-key sp-cal-key-pos"></span> lighter days ·
-                    <span class="sp-cal-key sp-cal-key-neg"></span> heavier days · deeper = stronger
-                </p>
 
                 <div class="sp-modal-actions">
                     <button class="sp-btn-ghost" @onclick="() => _showInsights = false">Done</button>
@@ -1169,7 +1169,7 @@
                 </div>
                 <div class="sp-const-float sp-cf-right">
                     <button class="sp-cf-btn" title="Lock" @onclick="LockNow">🔒</button>
-                    <button class="sp-cf-btn" title="Rebuild the map from all known facts"
+                    <button class="sp-cf-btn" title="Recompute the map from all your entries and facts — refines it, keeps all your data (nothing is deleted)."
                             disabled="@(_rebuildState == RState.Running)" @onclick="() => _showRebuildConfirm = true">
                         @(_rebuildState == RState.Running ? "✦ blooming…" : "⟳ rebuild")
                     </button>
