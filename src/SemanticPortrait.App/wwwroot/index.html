@@ -29,6 +29,14 @@
 
     <script>
         window.spScrollToBottom = (el) => { if (el) el.scrollTop = el.scrollHeight; };
+        // Search jump: scroll a message into view and flash a highlight.
+        window.spScrollToMessage = (id) => {
+            const el = document.querySelector('[data-msg-id="' + id + '"]');
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('sp-msg-flash');
+            setTimeout(() => el.classList.remove('sp-msg-flash'), 2200);
+        };
         // Chat scroll memory: the chat DOM is destroyed while the constellation is open, so the
         // last position lives in JS globals. Restore puts the user back where they were — or at
         // the latest message if they were already at (or near) the bottom.

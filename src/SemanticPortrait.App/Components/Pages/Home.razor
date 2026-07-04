@@ -217,6 +217,12 @@
                 <button class="sp-menu-item" @onclick="@(() => { _showDev = !_showDev; _showMenu = false; })">
                     <span>🐞</span> Developer trace
                 </button>
+                <button class="sp-menu-item" @onclick="@(() => { OpenSearch(); _showMenu = false; })">
+                    <span>🔎</span> Search entries
+                </button>
+                <button class="sp-menu-item" @onclick="@(() => { OpenInsights(); _showMenu = false; })">
+                    <span>📊</span> Insights
+                </button>
                 <button class="sp-menu-item" @onclick="@(() => { _showTimeline = true; _showMenu = false; })">
                     <span>🕰</span> Timeline
                 </button>
@@ -486,6 +492,101 @@
                 }
                 <div class="sp-modal-actions">
                     <button class="sp-btn-ghost" @onclick="() => _showTimeline = false">Done</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showSearch)
+    {
+        <div class="sp-modal-backdrop" @onclick="() => _showSearch = false">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(560px,94vw); max-height:80vh; overflow:auto">
+                <h3 style="color:var(--text)">Search entries</h3>
+                <input class="sp-search-box" placeholder="Find exact text in your entries…"
+                       value="@_searchQuery" @oninput="RunSearch" autofocus />
+                @if (_searchQuery.Trim().Length > 0)
+                {
+                    <p class="sp-muted" style="margin:8px 0">@_searchHits.Count match@(_searchHits.Count == 1 ? "" : "es")</p>
+                    @foreach (var hit in _searchHits)
+                    {
+                        <button class="sp-search-hit" @onclick="() => JumpToEntry(hit.Id)">
+                            <span class="sp-muted">@FmtWhen(hit.WhenUtc)</span>
+                            <span>@hit.Snippet</span>
+                        </button>
+                    }
+                }
+                else { <p class="sp-muted" style="margin:8px 0">Instant, on-device — no AI call. Click a result to jump to it.</p> }
+                <div class="sp-modal-actions">
+                    <button class="sp-btn-ghost" @onclick="() => _showSearch = false">Close</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_showInsights)
+    {
+        <div class="sp-modal-backdrop" @onclick="() => _showInsights = false">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(600px,94vw); max-height:84vh; overflow:auto">
+                <h3 style="color:var(--text)">Insights</h3>
+                @{
+                    var stats = Database.IsOpen ? Database.WritingStats(60) : (0, 0, 0, 60);
+                    var mood = Database.IsOpen ? Database.MoodSeries() : new();
+                    var cal = Database.IsOpen ? Database.CalendarMonth(_calMonth.Year, _calMonth.Month) : new();
+                }
+
+                @* showing up — facts, not a scoreboard *@
+                <div class="sp-stat-row">
+                    <div class="sp-stat"><b>@stats.Item1</b><span>entries · 60 days</span></div>
+                    <div class="sp-stat"><b>@stats.Item2.ToString("N0")</b><span>words written</span></div>
+                    <div class="sp-stat"><b>@stats.Item3</b><span>of 60 days</span></div>
+                </div>
+                <p class="sp-muted" style="margin:2px 0 14px">Showing up, not a streak. Every day you write is enough.</p>
+
+                @* mood over time *@
+                <p class="sp-insight-h">Mood over time</p>
+                @if (mood.Count >= 2)
+                {
+                    <svg class="sp-mood-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,.12)" stroke-width="0.4" />
+                        <path d="@MoodPath(mood, energy: false)" fill="none" stroke="#19d3ff" stroke-width="1.1" vector-effect="non-scaling-stroke" />
+                        <path d="@MoodPath(mood, energy: true)" fill="none" stroke="#ffb347" stroke-width="0.8" stroke-dasharray="2 2" vector-effect="non-scaling-stroke" opacity="0.7" />
+                    </svg>
+                    <p class="sp-muted" style="font-size:11px">
+                        <span style="color:#19d3ff">— valence</span> (up = positive) ·
+                        <span style="color:#ffb347">- - energy</span> · @mood.Count entries
+                    </p>
+                }
+                else { <p class="sp-muted">Not enough entries yet to chart.</p> }
+
+                @* calendar month *@
+                <div class="sp-cal-head">
+                    <button class="sp-iconbtn" @onclick="CalPrev" title="Previous month">‹</button>
+                    <span class="sp-insight-h" style="margin:0">@_calMonth.ToString("MMMM yyyy")</span>
+                    <button class="sp-iconbtn" @onclick="CalNext" title="Next month"
+                            disabled="@(_calMonth >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1))">›</button>
+                </div>
+                <div class="sp-cal-grid">
+                    @foreach (var dow in new[] { "S", "M", "T", "W", "T", "F", "S" })
+                    {
+                        <div class="sp-cal-dow">@dow</div>
+                    }
+                    @{
+                        var first = new DateTime(_calMonth.Year, _calMonth.Month, 1);
+                        var blanks = (int)first.DayOfWeek;
+                        var daysIn = DateTime.DaysInMonth(_calMonth.Year, _calMonth.Month);
+                    }
+                    @for (var b = 0; b < blanks; b++) { <div class="sp-cal-cell"></div> }
+                    @for (var d = 1; d <= daysIn; d++)
+                    {
+                        var has = cal.TryGetValue(d, out var info);
+                        var style = has ? $"background:{DayTint(info.MeanValence)}" : "";
+                        <div class="sp-cal-cell @(has ? "on" : "")" style="@style"
+                             title="@(has ? $"{info.Count} entr{(info.Count==1?"y":"ies")}" : "")">@d</div>
+                    }
+                </div>
+
+                <div class="sp-modal-actions">
+                    <button class="sp-btn-ghost" @onclick="() => _showInsights = false">Done</button>
                 </div>
             </div>
         </div>
@@ -826,7 +927,7 @@
                     }
                     else
                     {
-                        <div class="sp-msg sp-msg-@m.Role">
+                        <div class="sp-msg sp-msg-@m.Role" data-msg-id="@m.DbId">
                             @if (m.Role == "ai")
                             {
                                 <img class="sp-avatar" src="img/logo.png" alt="SemanticPortrait" />
