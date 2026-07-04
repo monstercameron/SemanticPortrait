@@ -11,7 +11,7 @@ namespace SemanticPortrait.Core;
 /// carries a one-line status computed here — so tracking never rides on the model's mood and
 /// never stacks context.
 /// </summary>
-public sealed class IntakeTools
+public sealed class IntakeTools : IToolModule
 {
     public const int QuestionCount = 20;
     private const string SettingKey = "intake_state";

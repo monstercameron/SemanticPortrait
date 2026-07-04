@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 ///  - list_open_predictions: see what's awaiting resolution.
 ///  - resolve_prediction: when reality arrives, mark outcome + an accuracy score (0..1).
 /// </summary>
-public sealed class PredictionTools
+public sealed class PredictionTools : IToolModule
 {
     private readonly Db _db;
     private readonly NotificationService? _notify;

@@ -10,7 +10,7 @@ namespace SemanticPortrait.Core;
 ///  - AnalystSpecs (clean-room): portrait + list_node_labels only — everything they return is
 ///    analyst-authored (graph/notes/events/entry summaries), never the raw thread.
 /// </summary>
-public sealed class RecallTools
+public sealed class RecallTools : IToolModule
 {
     private readonly RecallEngine _engine;
     public RecallTools(RecallEngine engine) => _engine = engine;

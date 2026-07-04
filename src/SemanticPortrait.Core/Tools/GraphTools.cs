@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 /// Categories should come from the ontology: keystone, distortion, fire, self, heart, wound,
 /// mind, body, joy, connection, work, money.
 /// </summary>
-public sealed class GraphTools
+public sealed class GraphTools : IToolModule
 {
     private readonly Db _db;
     private readonly IEmbedder _embedder;

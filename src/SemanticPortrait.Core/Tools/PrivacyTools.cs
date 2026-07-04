@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 /// with the power to flip them could be talked into weakening the user's own privacy settings
 /// mid-conversation. The agent may DESCRIBE where the switches live; only the user flips them.
 /// </summary>
-public sealed class PrivacyTools
+public sealed class PrivacyTools : IToolModule
 {
     private readonly Func<bool> _maskingOn;
     private readonly ProviderRegistry _providers;

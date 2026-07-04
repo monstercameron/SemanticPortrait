@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 /// to ask the user first. The agent can never toggle privacy; here it can never spend the
 /// user's bandwidth/disk without their yes.
 /// </summary>
-public sealed class VoiceTools
+public sealed class VoiceTools : IToolModule
 {
     private readonly SidecarVoice _voice;
     private readonly Action<string>? _progress;   // surfaced as quiet sys lines by the app

@@ -20,11 +20,14 @@ public sealed class AnalystSubagent
     private readonly PredictionTools _pred;
     private readonly RecallTools _recall;   // AnalystSpecs lane only: portrait + list_node_labels (no raw chat)
     private readonly TraceLog _trace;
+    // Dispatch order — must match the original if/else-if chain EXACTLY: entry, graph, pred, recall, memory.
+    private readonly IToolModule[] _modules;
 
     public AnalystSubagent(ProviderRegistry providers, MemoryTools memory, ProfileTools profile,
         GraphTools graph, EntryTools entry, PredictionTools pred, RecallTools recall, TraceLog trace)
     {
         _providers = providers; _memory = memory; _profile = profile; _graph = graph; _entry = entry; _pred = pred; _recall = recall; _trace = trace;
+        _modules = new IToolModule[] { _entry, _graph, _pred, _recall, _memory };
     }
 
     /// <summary>
@@ -62,13 +65,7 @@ public sealed class AnalystSubagent
 
         async Task<string> Exec(string name, string args)
         {
-            string result;
-            if (_entry.Handles(name)) result = await _entry.ExecuteAsync(name, args);
-            else if (_graph.Handles(name)) result = await _graph.ExecuteAsync(name, args);
-            else if (_pred.Handles(name)) result = await _pred.ExecuteAsync(name, args);
-            else if (_recall.Handles(name)) result = await _recall.ExecuteAsync(name, args);
-            else if (_memory.Handles(name)) result = await _memory.ExecuteAsync(name, args);
-            else result = await _profile.ExecuteAsync(name, args);
+            var result = await ToolDispatch.RouteAsync(_modules, _profile.ExecuteAsync, name, args);
             var detail = $"params: {args}\nresult: {result}";
             _trace.Add("analyst", "tool", name, $"params: {args}\nresult: {Truncate(result, 400)}");
             onToolCall?.Invoke(name, detail);
@@ -108,13 +105,7 @@ public sealed class AnalystSubagent
 
         async Task<string> Exec(string name, string args)
         {
-            string result;
-            if (_entry.Handles(name)) result = await _entry.ExecuteAsync(name, args);
-            else if (_graph.Handles(name)) result = await _graph.ExecuteAsync(name, args);
-            else if (_pred.Handles(name)) result = await _pred.ExecuteAsync(name, args);
-            else if (_recall.Handles(name)) result = await _recall.ExecuteAsync(name, args);
-            else if (_memory.Handles(name)) result = await _memory.ExecuteAsync(name, args);
-            else result = await _profile.ExecuteAsync(name, args);
+            var result = await ToolDispatch.RouteAsync(_modules, _profile.ExecuteAsync, name, args);
             _trace.Add("analyst", "tool", name, $"params: {args}\nresult: {Truncate(result, 400)}");
             onToolCall?.Invoke(name, $"params: {args}\nresult: {result}");
             return result;

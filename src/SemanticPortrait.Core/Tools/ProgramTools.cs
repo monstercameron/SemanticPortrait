@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 /// DB settings so it survives restarts and stays behind the lock.</summary>
 public sealed record JournalProgram(string Id, string Name, string Blurb, IReadOnlyList<string> Prompts);
 
-public sealed class ProgramTools
+public sealed class ProgramTools : IToolModule
 {
     private readonly Db _db;
     public ProgramTools(Db db) { _db = db; }

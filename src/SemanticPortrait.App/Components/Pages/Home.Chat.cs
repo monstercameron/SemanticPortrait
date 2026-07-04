@@ -319,14 +319,11 @@ public partial class Home
                 }
                 return "handed to the analyst (analyzing in the background)";
             }
-            var result = Tasks.Handles(name) ? await Tasks.ExecuteAsync(name, args)
-                : Programs.Handles(name) ? await Programs.ExecuteAsync(name, args)
-                : Privacy.Handles(name) ? await Privacy.ExecuteAsync(name, args)
-                : _voiceTools is { } vtl && vtl.Handles(name) ? await vtl.ExecuteAsync(name, args)
-                : Intake.Handles(name) ? await Intake.ExecuteAsync(name, args)
-                : Recall.Handles(name) ? await Recall.ExecuteAsync(name, args)
-                : Memory.Handles(name) ? await Memory.ExecuteAsync(name, args)
-                : await Tools.ExecuteAsync(name, args);
+            // Dispatch order — must match the original if/else-if chain EXACTLY.
+            var mods = new List<IToolModule> { Tasks, Programs, Privacy };
+            if (_voiceTools is { } vt) mods.Add(vt);
+            mods.Add(Intake); mods.Add(Recall); mods.Add(Memory);
+            var result = await ToolDispatch.RouteAsync(mods, Tools.ExecuteAsync, name, args);
             if (name is "recall" or "search_memory") reply.Sourced = true;   // cite the journal under the reply
             var detail = $"params: {args}\nresult: {result}";
             Trace.Add("main", "tool", name, detail);

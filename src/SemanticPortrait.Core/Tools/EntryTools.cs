@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 /// of range. The schema forces complete, honest metadata — no lazy blanks. The entry's datetime
 /// is taken from the stored message itself (not model-supplied), so it's always accurate.
 /// </summary>
-public sealed class EntryTools
+public sealed class EntryTools : IToolModule
 {
     private readonly Db _db;
     private readonly IEmbedder _embedder;

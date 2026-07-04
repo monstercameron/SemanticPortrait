@@ -9,7 +9,7 @@ namespace SemanticPortrait.Core;
 ///  - save_note: persist a durable distilled insight (embedded for future recall).
 ///  - refine_note: update an existing note and re-embed it (refining older notes).
 /// </summary>
-public sealed class MemoryTools
+public sealed class MemoryTools : IToolModule
 {
     private readonly Db _db;
     private readonly IEmbedder _embedder;

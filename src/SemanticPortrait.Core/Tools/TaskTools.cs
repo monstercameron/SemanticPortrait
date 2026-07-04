@@ -8,7 +8,7 @@ namespace SemanticPortrait.Core;
 /// (a timer triggers the agent to message the user when one is due). These are explicit user
 /// requests (not the self-model), so the main chat agent gets them directly.
 /// </summary>
-public sealed class TaskTools
+public sealed class TaskTools : IToolModule
 {
     private readonly Db _db;
     private readonly NotificationService? _notify;
