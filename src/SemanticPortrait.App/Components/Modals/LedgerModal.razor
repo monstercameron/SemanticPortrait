@@ -1,0 +1,43 @@
+@using Microsoft.Extensions.Localization
+@using SemanticPortrait.App
+@inject IStringLocalizer<SharedResource> L
+@inject SemanticPortrait.Core.LedgerPresenter Ledger
+
+<div class="sp-modal-backdrop" @onclick="() => OnClose.InvokeAsync()">
+    <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw)">
+        <h3>@L["Ledger.Title"]</h3>
+        @{ var cal = Ledger.Build(); }
+        @if (cal.ResolvedCount > 0)
+        {
+            <p class="sp-muted">@L["Ledger.AccuracyPrefix", cal.ResolvedCount] <strong style="color:var(--accent)">@((cal.Accuracy*100).ToString("0"))%</strong></p>
+        }
+        @if (cal.Predictions.Count == 0)
+        {
+            <p class="sp-muted">@L["Ledger.Empty"]</p>
+        }
+        <div class="sp-ledger">
+            @foreach (var p in cal.Predictions)
+            {
+                <div class="sp-pred @(p.ResolvedUtc is null ? "open" : "done")">
+                    <div class="sp-pred-claim">@p.Claim</div>
+                    <div class="sp-pred-crit sp-muted">resolves: @p.Criterion</div>
+                    @if (p.ResolvedUtc is not null)
+                    {
+                        <div class="sp-pred-out">→ @p.Outcome <span class="sp-pred-score">@(((p.Score ?? 0)*100).ToString("0"))%</span></div>
+                    }
+                    else
+                    {
+                        <div class="sp-pred-open sp-muted">@L["Ledger.Open"]</div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="sp-modal-actions">
+            <button class="sp-btn-ghost" @onclick="() => OnClose.InvokeAsync()">@L["Common.Done"]</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+}

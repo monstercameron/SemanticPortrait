@@ -1,0 +1,34 @@
+@using Microsoft.Extensions.Localization
+@using SemanticPortrait.App
+@inject IStringLocalizer<SharedResource> L
+@inject SemanticPortrait.Core.TimelinePresenter Timeline
+
+<div class="sp-modal-backdrop" @onclick="() => OnClose.InvokeAsync()">
+    <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
+        <h3>@L["Timeline.Title"]</h3>
+        @{ var tlDays = Timeline.Build(); }
+        @if (tlDays.Count == 0)
+        {
+            <p class="sp-muted">@L["Timeline.Empty"]</p>
+        }
+        @foreach (var day in tlDays)
+        {
+            <p style="color:var(--accent); margin:12px 0 4px; font-weight:600">@day.LocalDate.ToString("dddd, MMM d yyyy")</p>
+            @foreach (var it in day.Items)
+            {
+                <div style="display:flex; gap:8px; margin:3px 0">
+                    <span>@(it.Kind == SemanticPortrait.Core.TimelineKind.Event ? "📅" : "✍")</span>
+                    <span class="sp-muted" style="min-width:52px">@it.Utc.ToLocalTime().ToString("h:mm tt")</span>
+                    <span style="color:var(--text)">@it.Text</span>
+                </div>
+            }
+        }
+        <div class="sp-modal-actions">
+            <button class="sp-btn-ghost" @onclick="() => OnClose.InvokeAsync()">@L["Common.Done"]</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+}

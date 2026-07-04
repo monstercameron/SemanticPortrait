@@ -32,8 +32,6 @@
 @inject RecallEngine RecallCore
 @inject IntakeTools Intake
 @inject SemanticPortrait.Core.Constellation.DbConstellationSource ConstSource
-@inject SemanticPortrait.Core.TimelinePresenter Timeline
-@inject SemanticPortrait.Core.LedgerPresenter Ledger
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -476,31 +474,7 @@
 
     @if (_showTimeline)
     {
-        <div class="sp-modal-backdrop" @onclick="() => _showTimeline = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
-                <h3>Timeline</h3>
-                @{ var tlDays = Timeline.Build(); }
-                @if (tlDays.Count == 0)
-                {
-                    <p class="sp-muted">Nothing yet — entries and dated events will appear here.</p>
-                }
-                @foreach (var day in tlDays)
-                {
-                    <p style="color:var(--accent); margin:12px 0 4px; font-weight:600">@day.LocalDate.ToString("dddd, MMM d yyyy")</p>
-                    @foreach (var it in day.Items)
-                    {
-                        <div style="display:flex; gap:8px; margin:3px 0">
-                            <span>@(it.Kind == SemanticPortrait.Core.TimelineKind.Event ? "📅" : "✍")</span>
-                            <span class="sp-muted" style="min-width:52px">@it.Utc.ToLocalTime().ToString("h:mm tt")</span>
-                            <span style="color:var(--text)">@it.Text</span>
-                        </div>
-                    }
-                }
-                <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showTimeline = false">Done</button>
-                </div>
-            </div>
-        </div>
+        <SemanticPortrait.App.Components.Modals.TimelineModal OnClose="() => _showTimeline = false" />
     }
 
     @if (_showSearch)
@@ -674,40 +648,7 @@
 
     @if (_showLedger)
     {
-        <div class="sp-modal-backdrop" @onclick="() => _showLedger = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw)">
-                <h3>Calibration — track record</h3>
-                @{ var cal = Ledger.Build(); }
-                @if (cal.ResolvedCount > 0)
-                {
-                    <p class="sp-muted">Accuracy over @cal.ResolvedCount resolved: <strong style="color:var(--accent)">@((cal.Accuracy*100).ToString("0"))%</strong></p>
-                }
-                @if (cal.Predictions.Count == 0)
-                {
-                    <p class="sp-muted">No predictions yet. When you forecast something, the analyst logs a falsifiable prediction and scores it later.</p>
-                }
-                <div class="sp-ledger">
-                    @foreach (var p in cal.Predictions)
-                    {
-                        <div class="sp-pred @(p.ResolvedUtc is null ? "open" : "done")">
-                            <div class="sp-pred-claim">@p.Claim</div>
-                            <div class="sp-pred-crit sp-muted">resolves: @p.Criterion</div>
-                            @if (p.ResolvedUtc is not null)
-                            {
-                                <div class="sp-pred-out">→ @p.Outcome <span class="sp-pred-score">@(((p.Score ?? 0)*100).ToString("0"))%</span></div>
-                            }
-                            else
-                            {
-                                <div class="sp-pred-open sp-muted">open</div>
-                            }
-                        </div>
-                    }
-                </div>
-                <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showLedger = false">Done</button>
-                </div>
-            </div>
-        </div>
+        <SemanticPortrait.App.Components.Modals.LedgerModal OnClose="() => _showLedger = false" />
     }
 
     @if (_showLlm)

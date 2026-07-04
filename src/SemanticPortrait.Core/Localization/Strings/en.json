@@ -72,5 +72,15 @@
   "Menu.EgressSummaryTooltip": "What actually leaves this machine right now",
 
   "NotFound.Title": "Not Found",
-  "NotFound.Body": "Sorry, the content you are looking for does not exist."
+  "NotFound.Body": "Sorry, the content you are looking for does not exist.",
+
+  "Common.Done": "Done",
+
+  "Timeline.Title": "Timeline",
+  "Timeline.Empty": "Nothing yet — entries and dated events will appear here.",
+
+  "Ledger.Title": "Calibration — track record",
+  "Ledger.AccuracyPrefix": "Accuracy over {0} resolved:",
+  "Ledger.Empty": "No predictions yet. When you forecast something, the analyst logs a falsifiable prediction and scores it later.",
+  "Ledger.Open": "open"
 }
