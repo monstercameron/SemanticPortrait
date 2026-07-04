@@ -264,7 +264,7 @@
                 <button class="sp-menu-item" @onclick="CycleCheckin"
                         title="A daily one-line invitation to reflect, at this hour — skipped on days you already wrote. Click to cycle.">
                     <span>🌙</span>
-                    @(_checkinHour == 0 ? "Evening check-in: off" : $"Evening check-in: {_checkinHour}:00")
+                    @(CheckinHour == 0 ? "Evening check-in: off" : $"Evening check-in: {CheckinHour}:00")
                 </button>
                 <div class="sp-menu-sep"></div>
                 @if (!_hideCosts)

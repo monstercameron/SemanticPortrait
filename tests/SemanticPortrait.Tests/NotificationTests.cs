@@ -206,4 +206,19 @@ public class NotificationTests : IDisposable
         Assert.Equal(newDue, rem.DueUtc);
         Assert.Single(db.DueReminders(DateTime.UtcNow.AddMinutes(20)));   // fires again at the new time
     }
+
+    [Fact]
+    public async Task Checkin_toast_is_immediate_generic_and_replaces()
+    {
+        var db = NewDb();
+        var sched = new FakeScheduler();
+        await Svc(db, "{\"private\": true}", sched).ShowCheckinToastAsync();
+
+        var t = Assert.Single(sched.Scheduled);
+        Assert.Equal("checkin", t.Tag);          // stable tag: repeats replace, never stack
+        Assert.Equal("checkin", t.Arg);
+        Assert.True(t.When <= DateTimeOffset.UtcNow.AddSeconds(2));   // immediate, no grace
+        Assert.DoesNotContain("insulin", t.Body);                     // fixed content-free text
+        Assert.Contains("journal", t.Body);
+    }
 }

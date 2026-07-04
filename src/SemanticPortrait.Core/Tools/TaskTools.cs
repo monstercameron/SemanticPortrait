@@ -12,13 +12,26 @@ public sealed class TaskTools
 {
     private readonly Db _db;
     private readonly NotificationService? _notify;
-    public TaskTools(Db db, NotificationService? notify = null) { _db = db; _notify = notify; }
+    // Evening check-in setting lives in app preferences (Core can't reach MAUI storage) — the
+    // host passes read/write delegates; without them the tool simply doesn't exist.
+    private readonly Func<int>? _getCheckinHour;
+    private readonly Action<int>? _setCheckinHour;
+    public TaskTools(Db db, NotificationService? notify = null,
+        Func<int>? getCheckinHour = null, Action<int>? setCheckinHour = null)
+    { _db = db; _notify = notify; _getCheckinHour = getCheckinHour; _setCheckinHour = setCheckinHour; }
 
     private static readonly HashSet<string> _names = new()
         { "add_todo", "list_todos", "complete_todo", "set_reminder", "list_reminders", "cancel_reminder", "upcoming" };
-    public bool Handles(string name) => _names.Contains(name);
+    public bool Handles(string name) =>
+        _names.Contains(name) || (name == "set_evening_checkin" && _setCheckinHour is not null);
 
-    public IReadOnlyList<object> Specs => new object[]
+    // set_evening_checkin only advertises when the host wired the setting delegates.
+    public IReadOnlyList<object> Specs => _setCheckinHour is null
+        ? AllSpecs.Where((_, i) => i != CheckinSpecIndex).ToList()
+        : AllSpecs;
+
+    private const int CheckinSpecIndex = 6;   // position of set_evening_checkin below
+    private IReadOnlyList<object> AllSpecs => new object[]
     {
         new { type = "function", name = "add_todo",
               description = "Add an item to the user's todo list when they say they need/want to do something. " +
@@ -46,6 +59,13 @@ public sealed class TaskTools
               description = "List pending reminders.", parameters = Obj(Array.Empty<string>()) },
         new { type = "function", name = "cancel_reminder",
               description = "Cancel a reminder by id.", parameters = Obj(new[]{"id"}, ("id","integer","Reminder id.")) },
+        new { type = "function", name = "set_evening_checkin",
+              description = "Configure the DAILY evening journaling nudge: at the chosen local hour, if the user " +
+                            "hasn't written anything since mid-afternoon, they get one gentle invitation (in-thread, " +
+                            "plus a Windows notification when the app doesn't have their attention). Days they " +
+                            "already wrote get silence. Use this — NOT set_reminder — when they ask to be reminded " +
+                            "to journal regularly; set_reminder is for one-shot reminders.",
+              parameters = Obj(new[]{"hour"}, ("hour", "integer", "Local hour 17-23, or 0 to turn the nudge off.")) },
         new { type = "function", name = "upcoming",
               description = "The user's time-ordered agenda in one view: pending reminders, future dated events, " +
                             "predictions awaiting resolution, and open todos. Call when they ask what's coming up / " +
@@ -92,6 +112,16 @@ public sealed class TaskTools
                 case "complete_todo":
                     return Task.FromResult(TryId(r, out var cid) && _db.SetTodoDone(cid, true)
                         ? $"todo #{cid} done" : "error: todo not found.");
+                case "set_evening_checkin":
+                    if (_setCheckinHour is null || _getCheckinHour is null) return Task.FromResult("error: not available.");
+                    if (!r.TryGetProperty("hour", out var he) || !he.TryGetInt64(out var hv2))
+                        return Task.FromResult("error: 'hour' required (17-23, or 0 for off).");
+                    if (hv2 != 0 && (hv2 < 17 || hv2 > 23))
+                        return Task.FromResult("error: hour must be 17-23 (evening), or 0 to turn it off.");
+                    _setCheckinHour((int)hv2);
+                    return Task.FromResult(hv2 == 0
+                        ? "evening check-in turned off."
+                        : $"evening check-in set for {hv2}:00 — one gentle nudge per day, only on days nothing was written; a Windows notification taps them if the app isn't focused.");
                 case "set_reminder":
                     var rt = Str(r, "text"); var when = Str(r, "when");
                     if (string.IsNullOrWhiteSpace(rt) || string.IsNullOrWhiteSpace(when)) return Task.FromResult("error: 'text' and 'when' required.");

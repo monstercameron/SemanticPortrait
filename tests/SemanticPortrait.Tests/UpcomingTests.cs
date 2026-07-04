@@ -109,6 +109,27 @@ public class UpcomingTests : IDisposable
     }
 
     [Fact]
+    public async Task Evening_checkin_tool_sets_validates_and_hides_without_delegates()
+    {
+        var stored = -1;
+        var wired = new TaskTools(_db, null, getCheckinHour: () => stored, setCheckinHour: h => stored = h);
+        Assert.True(wired.Handles("set_evening_checkin"));
+        Assert.Contains(wired.Specs, s2 => s2.ToString()!.Contains("set_evening_checkin"));
+
+        Assert.Contains("21:00", await wired.ExecuteAsync("set_evening_checkin", "{\"hour\":21}"));
+        Assert.Equal(21, stored);
+        Assert.Contains("turned off", await wired.ExecuteAsync("set_evening_checkin", "{\"hour\":0}"));
+        Assert.Equal(0, stored);
+        Assert.Contains("error", await wired.ExecuteAsync("set_evening_checkin", "{\"hour\":12}"));   // noon is not evening
+        Assert.Equal(0, stored);
+
+        // without the host delegates the tool neither advertises nor answers
+        var bare = new TaskTools(_db);
+        Assert.False(bare.Handles("set_evening_checkin"));
+        Assert.DoesNotContain(bare.Specs, s2 => s2.ToString()!.Contains("set_evening_checkin"));
+    }
+
+    [Fact]
     public void Tool_is_wired_and_executes()
     {
         Assert.True(_tools.Handles("upcoming"));

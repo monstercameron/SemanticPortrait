@@ -38,12 +38,12 @@ public partial class Home
         _ = Microsoft.Maui.ApplicationModel.Launcher.Default.OpenAsync(UpdateCheck.ReleasesUrl);
 
     // Evening check-in: 0 = off; otherwise the local hour the daily reflection nudge may fire.
-    private int _checkinHour = Microsoft.Maui.Storage.Preferences.Default.Get("checkin_hour", 0);
-    private void CycleCheckin()
-    {
-        _checkinHour = _checkinHour switch { 0 => 19, 19 => 20, 20 => 21, 21 => 22, _ => 0 };
-        Microsoft.Maui.Storage.Preferences.Default.Set("checkin_hour", _checkinHour);
-    }
+    // Read LIVE from Preferences — the agent can change it too (set_evening_checkin), and the
+    // menu label must reflect whoever wrote last.
+    private static int CheckinHour => Microsoft.Maui.Storage.Preferences.Default.Get("checkin_hour", 0);
+    private void CycleCheckin() =>
+        Microsoft.Maui.Storage.Preferences.Default.Set("checkin_hour",
+            CheckinHour switch { 0 => 19, 19 => 20, 20 => 21, 21 => 22, _ => 0 });
 
     private string _draft = "";
     private bool _busy;

@@ -148,6 +148,10 @@ public partial class Home
             Database.SetSetting("checkin_day", today);   // one decision per day, nudge or not
             if (wroteToday) return;
 
+            // Attention routing (same philosophy as reminders): the in-thread invitation always
+            // lands and waits; when the app ISN'T being looked at, a content-free OS toast taps
+            // the shoulder — an in-app-only nudge in a trayed app nudges nobody.
+            if (!AppFocus.IsFocused) _ = Notify.ShowCheckinToastAsync();
             _ = FireProactive(
                 "[Evening check-in — the user opted into a daily reflection nudge at this hour, and " +
                 "they haven't written since this afternoon. Offer ONE warm, grounded line inviting them " +
@@ -295,6 +299,13 @@ public partial class Home
     {
         // Never bypass the lock: stash and process after unlock.
         if (_locked || _configuring || !Database.IsOpen) { _pendingToastArg = arg; return; }
+
+        // Evening-nudge toast: the invitation is already waiting in-thread — just land there.
+        if (arg == "checkin")
+        {
+            _showNotifs = false; _scrollDown = true; _focusNext = true; StateHasChanged();
+            return;
+        }
 
         // Toast BUTTONS: snooze pushes the due time and re-arms; Done just puts it to rest.
         // Both are quiet actions — no agent nudge, the user already made their decision.

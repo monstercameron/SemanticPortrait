@@ -166,7 +166,11 @@ public static class MauiProgram
 #endif
 		builder.Services.AddSingleton<ToastActivationService>();
 		builder.Services.AddSingleton<NotificationService>();
-		builder.Services.AddSingleton<TaskTools>();
+		// TaskTools gets the evening-check-in setting via delegates (Core can't reach Preferences).
+		builder.Services.AddSingleton(sp => new TaskTools(
+			sp.GetRequiredService<Db>(), sp.GetRequiredService<NotificationService>(),
+			getCheckinHour: () => Microsoft.Maui.Storage.Preferences.Default.Get("checkin_hour", 0),
+			setCheckinHour: h => Microsoft.Maui.Storage.Preferences.Default.Set("checkin_hour", h)));
 		// Read-only privacy awareness for the agent (report, never toggle — consent stays the user's).
 		builder.Services.AddSingleton(sp => new PrivacyTools(
 			() => Microsoft.Maui.Storage.Preferences.Default.Get("masking", false),

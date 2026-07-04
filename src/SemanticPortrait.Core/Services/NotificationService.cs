@@ -85,6 +85,21 @@ public sealed class NotificationService
         try { _toasts.Cancel(reminderId.ToString(), ReminderGroup); } catch { }
     }
 
+    /// <summary>Immediate OS toast for the evening journal nudge — fires only when the app
+    /// doesn't have the user's attention (the in-thread invitation lands either way). The text
+    /// is FIXED and content-free, so it needs no privacy classification and is lock-screen safe
+    /// by construction; a stable tag means a repeat replaces rather than stacks.</summary>
+    public async Task ShowCheckinToastAsync()
+    {
+        try
+        {
+            await _toasts.ScheduleAsync("checkin", "checkin", DateTimeOffset.UtcNow,
+                "SemanticPortrait", "A quiet moment for today? Nothing in the journal yet this evening.",
+                "checkin");
+        }
+        catch { /* best-effort — the in-thread line still lands */ }
+    }
+
     /// <summary>Classify + schedule the OS toast for a prediction's due time (same privacy model
     /// as reminders: only non-private text crosses to the locked screen).</summary>
     public async Task SchedulePredictionAsync(long predictionId, string claim, DateTimeOffset dueUtc, CancellationToken ct = default)

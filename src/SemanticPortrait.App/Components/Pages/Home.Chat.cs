@@ -168,6 +168,7 @@ public partial class Home
         "upcoming"           => "🗓 checked your agenda",
         "privacy_status"     => "🛡 checked what leaves this machine",
         "voice_setup"        => "🎙 checked voice setup",
+        "set_evening_checkin" => "🌙 set the evening check-in",
         "list_reminders"     => "⏰ checked your reminders",
         "cancel_reminder"    => "⏰ cancelled a reminder",
         "make_prediction"    => "🎯 logged a prediction",
