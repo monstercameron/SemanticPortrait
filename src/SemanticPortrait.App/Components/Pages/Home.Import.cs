@@ -33,7 +33,7 @@ public partial class Home
                           ".json", ".csv", ".xml" },   // Discord export / generic CSV / SMS backup
                 });
             var picked = await Microsoft.Maui.Storage.FilePicker.Default.PickMultipleAsync(
-                new Microsoft.Maui.Storage.PickOptions { PickerTitle = "Import notes / analysis", FileTypes = types });
+                new Microsoft.Maui.Storage.PickOptions { PickerTitle = L["Import.PickerTitle"], FileTypes = types });
             var list = picked?.Where(x => x is not null).Select(x => x!).ToList() ?? new();
             if (list.Count == 0) return;
             _importFiles = list;
@@ -42,7 +42,7 @@ public partial class Home
         }
         catch (Exception ex)
         {
-            _messages.Add(new() { Role = "sys", Text = $"import: couldn't open files — {ex.Message}" });
+            _messages.Add(new() { Role = "sys", Text = L["Import.OpenFilesFailed", ex.Message].Value });
             StateHasChanged();
         }
     }
@@ -82,7 +82,7 @@ public partial class Home
                 // Source adapters: Discord/WhatsApp/SMS/CSV exports normalize into dated-entry
                 // text; anything unrecognized passes through untouched.
                 text = ImportAdapters.Normalize(f.FileName, text);
-                Status($"scanning {f.FileName} ({i}/{_importFiles.Count})…");
+                Status(L["Import.ScanningProgress", f.FileName, i, _importFiles.Count].Value);
                 var about = "";
                 var pending = new List<(string, string)>();
                 foreach (var chunk in Chunk(text, 6000))
@@ -96,7 +96,7 @@ public partial class Home
                 }
                 files.Add((f.FileName, pending, about));
             }
-            if (skipped > 0) await Note($"📥 resuming — {skipped} chunk(s) already imported, skipping them.");
+            if (skipped > 0) await Note("📥 " + L["Import.ResumingSkipped", skipped].Value);
 
             // Phase 1 — deep import with live progress; each chunk is recorded only after the
             // analyst finished it, so failures retry on the next run.
@@ -105,8 +105,8 @@ public partial class Home
             {
                 ct.ThrowIfCancellationRequested();
                 n++;
-                if (pending.Count == 0) { await Note($"📥 {name}: already fully imported."); continue; }
-                _impNote = $"Reading {n}/{files.Count}: {name}{(string.IsNullOrWhiteSpace(about) ? "" : " — " + about)}";
+                if (pending.Count == 0) { await Note("📥 " + L["Import.AlreadyImported", name].Value); continue; }
+                _impNote = L["Import.ReadingFile", n, files.Count, name, string.IsNullOrWhiteSpace(about) ? "" : " — " + about].Value;
                 await InvokeAsync(StateHasChanged);
                 foreach (var (chunk, hash) in pending)
                 {
@@ -118,16 +118,16 @@ public partial class Home
                         Database.MarkChunkImported(hash, name);
                     }
                     catch (OperationCanceledException) { throw; }
-                    catch (Exception ex) { await Note($"📥 {name}: analysis error — {ex.Message}"); }
+                    catch (Exception ex) { await Note("📥 " + L["Import.AnalysisError", name, ex.Message].Value); }
                 }
-                await Note($"📥 imported {name}{(string.IsNullOrWhiteSpace(about) ? "" : " — " + about)}");
+                await Note("📥 " + L["Import.ImportedFile", name, string.IsNullOrWhiteSpace(about) ? "" : " — " + about].Value);
             }
-            await Note($"📥 import complete — {_impDone} facts across {files.Count} file(s).");
+            await Note("📥 " + L["Import.Complete", _impDone, files.Count].Value);
             await MakeItAContinuationAsync(ct);
         }
         catch (OperationCanceledException)
         {
-            await Note($"📥 import stopped (kept {_impDone} so far).");
+            await Note("📥 " + L["Import.Stopped", _impDone].Value);
         }
         finally
         {
@@ -148,7 +148,7 @@ public partial class Home
     {
         Intake.CompleteViaImport();
 
-        Status("weaving your history into the running summary…");
+        Status(L["Import.Weaving"].Value);
         var folded = 0;
         try
         {
@@ -158,7 +158,7 @@ public partial class Home
                 var n = await Compaction.EnsureCompactedAsync(DateTime.UtcNow, maxBatch: 60, ct);
                 if (n == 0) break;
                 folded += n;
-                _impActivity = $"woven {folded} entries into your story so far…";
+                _impActivity = L["Import.Woven", folded].Value;
                 await InvokeAsync(StateHasChanged);
             }
         }

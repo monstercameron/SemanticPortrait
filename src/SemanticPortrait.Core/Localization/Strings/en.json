@@ -75,6 +75,7 @@
   "NotFound.Body": "Sorry, the content you are looking for does not exist.",
 
   "Common.Done": "Done",
+  "Common.Cancel": "Cancel",
 
   "Timeline.Title": "Timeline",
   "Timeline.Empty": "Nothing yet — entries and dated events will appear here.",
@@ -82,5 +83,47 @@
   "Ledger.Title": "Calibration — track record",
   "Ledger.AccuracyPrefix": "Accuracy over {0} resolved:",
   "Ledger.Empty": "No predictions yet. When you forecast something, the analyst logs a falsifiable prediction and scores it later.",
-  "Ledger.Open": "open"
+  "Ledger.Open": "open",
+
+  "Search.Title": "Search entries",
+  "Search.Placeholder": "Find exact text in your entries…",
+  "Search.Match": "{0} match",
+  "Search.Matches": "{0} matches",
+  "Search.Hint": "Instant, on-device — no AI call. Click a result to jump to it.",
+  "Search.Close": "Close",
+
+  "Programs.Title": "Guided programs",
+  "Programs.Intro": "A short, gentle sequence of daily prompts. One a day; skip any day you like.",
+  "Programs.DaysBlurb": "{0} days · {1}",
+  "Programs.ActiveDay": "day {0} ✓",
+  "Programs.Start": "Start",
+  "Programs.Close": "Close",
+
+  "Import.Title": "Import {0} file(s)",
+  "Import.Body": "Each file is distilled by the deep analyst into your model (notes, graph, events) — standardized, deduped against what you already have. Imported content is reference, not chat.",
+  "Import.UploadWarning": "This uploads file contents to OpenAI for analysis + embeddings.",
+  "Import.ImportButton": "Import",
+  "Import.ImportingHeader": "Importing…",
+  "Import.FactsProgress": "~{0} / {1} facts",
+  "Import.Scanning": "scanning…",
+  "Import.Working": "working…",
+  "Import.StopButton": "Stop",
+  "Import.PickerTitle": "Import notes / analysis",
+  "Import.OpenFilesFailed": "import: couldn't open files — {0}",
+  "Import.ScanningProgress": "scanning {0} ({1}/{2})…",
+  "Import.ResumingSkipped": "resuming — {0} chunk(s) already imported, skipping them.",
+  "Import.AlreadyImported": "{0}: already fully imported.",
+  "Import.ReadingFile": "Reading {0}/{1}: {2}{3}",
+  "Import.AnalysisError": "{0}: analysis error — {1}",
+  "Import.ImportedFile": "imported {0}{1}",
+  "Import.Complete": "import complete — {0} facts across {1} file(s).",
+  "Import.Stopped": "import stopped (kept {0} so far).",
+  "Import.Weaving": "weaving your history into the running summary…",
+  "Import.Woven": "woven {0} entries into your story so far…",
+
+  "Erase.Title": "Erase everything?",
+  "Erase.Warning": "This permanently deletes your <strong>entire thread</strong>, every note, all embeddings, and your profile from this machine. The thread is meant to be forever — this cannot be undone and there is no backup.",
+  "Erase.ConfirmPre": "To confirm, type",
+  "Erase.ConfirmPost": "below:",
+  "Erase.DeleteButton": "Delete everything"
 }

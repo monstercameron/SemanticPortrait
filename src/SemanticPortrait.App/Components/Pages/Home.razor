@@ -355,19 +355,17 @@
     {
         <div class="sp-modal-backdrop" @onclick="CloseReset">
             <div class="sp-modal sp-modal-danger" @onclick:stopPropagation="true">
-                <h3>Erase everything?</h3>
+                <h3>@L["Erase.Title"]</h3>
                 <p class="sp-muted">
-                    This permanently deletes your <strong>entire thread</strong>, every note, all
-                    embeddings, and your profile from this machine. The thread is meant to be
-                    forever — this cannot be undone and there is no backup.
+                    @((MarkupString)L["Erase.Warning"].Value)
                 </p>
-                <p>To confirm, type <code>@ResetPhrase</code> below:</p>
+                <p>@L["Erase.ConfirmPre"] <code>@ResetPhrase</code> @L["Erase.ConfirmPost"]</p>
                 <input class="sp-reset-input" @bind="_resetText" @bind:event="oninput"
                        placeholder="@ResetPhrase" autocomplete="off" />
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="CloseReset">Cancel</button>
+                    <button class="sp-btn-ghost" @onclick="CloseReset">@L["Common.Cancel"]</button>
                     <button class="sp-btn-danger" @onclick="WipeEverything"
-                            disabled="@(_resetText != ResetPhrase)">Delete everything</button>
+                            disabled="@(_resetText != ResetPhrase)">@L["Erase.DeleteButton"]</button>
                 </div>
             </div>
         </div>
@@ -379,34 +377,33 @@
             <div class="sp-modal" @onclick:stopPropagation="true">
                 @if (!_importBusy)
                 {
-                    <h3>Import @(_importFiles.Count) file(s)</h3>
+                    <h3>@L["Import.Title", _importFiles.Count]</h3>
                     <p class="sp-muted">
-                        Each file is distilled by the deep analyst into your model (notes, graph, events) —
-                        standardized, deduped against what you already have. Imported content is reference, not chat.
+                        @L["Import.Body"]
                     </p>
-                    <p class="sp-lock-err" style="color:#e0a23d">⚠ This uploads file contents to OpenAI for analysis + embeddings.</p>
+                    <p class="sp-lock-err" style="color:#e0a23d">⚠ @L["Import.UploadWarning"]</p>
                     <div class="sp-ledger">
                         @foreach (var f in _importFiles) { <div class="sp-pred"><div class="sp-pred-claim">@f.FileName</div></div> }
                     </div>
                     <div class="sp-modal-actions">
-                        <button class="sp-btn-ghost" @onclick="() => _showImport = false">Cancel</button>
-                        <button class="sp-send" @onclick="RunImport">Import</button>
+                        <button class="sp-btn-ghost" @onclick="() => _showImport = false">@L["Common.Cancel"]</button>
+                        <button class="sp-send" @onclick="RunImport">@L["Import.ImportButton"]</button>
                     </div>
                 }
                 else
                 {
-                    <h3><span class="sp-spin">✦</span> Importing…</h3>
+                    <h3><span class="sp-spin">✦</span> @L["Import.ImportingHeader"]</h3>
                     <div class="sp-prog">
                         <div class="sp-prog-bar" style="width:@(_impPct)%"></div>
                     </div>
                     <div class="sp-prog-stat">
-                        @if (_impTotal > 0) { <span>~@_impDone / @_impTotal facts</span> } else { <span>scanning…</span> }
+                        @if (_impTotal > 0) { <span>@L["Import.FactsProgress", _impDone, _impTotal]</span> } else { <span>@L["Import.Scanning"]</span> }
                         <span class="sp-muted">@_impPct%</span>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(_impNote)) { <div class="sp-prog-note">@_impNote</div> }
-                    <div class="sp-prog-act"><span class="sp-spin-dot"></span> @(_impActivity ?? "working…")</div>
+                    <div class="sp-prog-act"><span class="sp-spin-dot"></span> @(_impActivity ?? L["Import.Working"].Value)</div>
                     <div class="sp-modal-actions">
-                        <button class="sp-btn-ghost" @onclick="CancelImport">Stop</button>
+                        <button class="sp-btn-ghost" @onclick="CancelImport">@L["Import.StopButton"]</button>
                     </div>
                 }
             </div>
@@ -481,12 +478,12 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showSearch = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
-                <h3>Search entries</h3>
-                <input class="sp-search-box" placeholder="Find exact text in your entries…"
+                <h3>@L["Search.Title"]</h3>
+                <input class="sp-search-box" placeholder="@L["Search.Placeholder"]"
                        value="@_searchQuery" @oninput="RunSearch" autofocus />
                 @if (_searchQuery.Trim().Length > 0)
                 {
-                    <p class="sp-muted" style="margin:8px 0">@_searchHits.Count match@(_searchHits.Count == 1 ? "" : "es")</p>
+                    <p class="sp-muted" style="margin:8px 0">@(_searchHits.Count == 1 ? L["Search.Match", _searchHits.Count] : L["Search.Matches", _searchHits.Count])</p>
                     @foreach (var hit in _searchHits)
                     {
                         <button class="sp-search-hit" @onclick="() => JumpToEntry(hit.Id)">
@@ -495,9 +492,9 @@
                         </button>
                     }
                 }
-                else { <p class="sp-muted" style="margin:8px 0">Instant, on-device — no AI call. Click a result to jump to it.</p> }
+                else { <p class="sp-muted" style="margin:8px 0">@L["Search.Hint"]</p> }
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showSearch = false">Close</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showSearch = false">@L["Search.Close"]</button>
                 </div>
             </div>
         </div>
@@ -507,8 +504,8 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showPrograms = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
-                <h3>Guided programs</h3>
-                <p class="sp-muted" style="margin:0 0 12px">A short, gentle sequence of daily prompts. One a day; skip any day you like.</p>
+                <h3>@L["Programs.Title"]</h3>
+                <p class="sp-muted" style="margin:0 0 12px">@L["Programs.Intro"]</p>
                 @{ var activeProg = Database.IsOpen ? Programs.Active() : null; }
                 @foreach (var p in ProgramTools.Catalog)
                 {
@@ -516,20 +513,20 @@
                     <div class="sp-program">
                         <div class="sp-program-info">
                             <b>@p.Name</b>
-                            <span class="sp-muted">@p.Prompts.Count days · @p.Blurb</span>
+                            <span class="sp-muted">@L["Programs.DaysBlurb", p.Prompts.Count, p.Blurb]</span>
                         </div>
                         @if (isActive)
                         {
-                            <span class="sp-program-on">day @activeProg!.Value.Day ✓</span>
+                            <span class="sp-program-on">@L["Programs.ActiveDay", activeProg!.Value.Day]</span>
                         }
                         else
                         {
-                            <button class="sp-send" @onclick="() => StartProgram(p.Id)">Start</button>
+                            <button class="sp-send" @onclick="() => StartProgram(p.Id)">@L["Programs.Start"]</button>
                         }
                     </div>
                 }
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showPrograms = false">Close</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showPrograms = false">@L["Programs.Close"]</button>
                 </div>
             </div>
         </div>
