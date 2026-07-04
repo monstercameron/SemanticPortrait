@@ -414,28 +414,26 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showExport = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-sm),94vw)">
-                <h3>Export</h3>
-                <p class="sp-muted">Writes JSON, Markdown, CSV, Mermaid (.mmd) and GraphML to your Desktop.
-                    Leave the dates empty for everything.</p>
+                <h3>@L["Export.Title"]</h3>
+                <p class="sp-muted">@L["Export.Blurb"]</p>
                 <div style="display:flex; gap:8px; align-items:center; margin:6px 0">
-                    <label class="sp-muted" style="width:44px">from</label>
+                    <label class="sp-muted" style="width:44px">@L["Export.From"]</label>
                     <input class="sp-lock-input" style="margin:0" type="date" @bind="_expFrom" @bind:event="oninput" />
                 </div>
                 <div style="display:flex; gap:8px; align-items:center; margin:6px 0">
-                    <label class="sp-muted" style="width:44px">to</label>
+                    <label class="sp-muted" style="width:44px">@L["Export.To"]</label>
                     <input class="sp-lock-input" style="margin:0" type="date" @bind="_expTo" @bind:event="oninput" />
                 </div>
                 <label class="sp-mask-consent" style="margin-top:8px">
                     <input type="checkbox" @bind="_expMasked" />
-                    <span><strong>Masked (shareable)</strong>
-                    <small>Emails, phone numbers and IDs are replaced with placeholders.
-                    <em>Names are not masked</em>, and content can still re-identify you — share thoughtfully.</small></span>
+                    <span><strong>@L["Export.MaskedTitle"]</strong>
+                    <small>@((MarkupString)L["Export.MaskedDetail"].Value)</small></span>
                 </label>
                 @if (!string.IsNullOrEmpty(_expMsg)) { <div class="sp-lock-err">@_expMsg</div> }
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showExport = false">Cancel</button>
-                    <button class="sp-btn-ghost" @onclick="RunPdfExport" title="A printable book of your entries">📖 PDF book</button>
-                    <button class="sp-send" @onclick="RunExport">Export data</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showExport = false">@L["Common.Cancel"]</button>
+                    <button class="sp-btn-ghost" @onclick="RunPdfExport" title="@L["Export.PdfButtonTitle"]">📖 @L["Export.PdfButton"]</button>
+                    <button class="sp-send" @onclick="RunExport">@L["Export.ExportButton"]</button>
                 </div>
             </div>
         </div>
@@ -445,25 +443,22 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showBackup = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw)">
-                <h3>Backup &amp; restore</h3>
-                <p class="sp-muted">A backup is a complete copy of your database — thread, notes, graph,
-                    everything — encrypted with your current key. Keep it somewhere safe; it opens only
-                    with this vault's PIN.</p>
+                <h3>@L["Backup.Title"]</h3>
+                <p class="sp-muted">@L["Backup.Body"]</p>
                 <div class="sp-modal-actions" style="justify-content:flex-start">
-                    <button class="sp-send" @onclick="RunBackup">Back up now → Desktop</button>
+                    <button class="sp-send" @onclick="RunBackup">@L["Backup.BackupNowButton"]</button>
                 </div>
                 <div class="sp-menu-sep" style="margin:12px 0"></div>
-                <p class="sp-muted"><strong>Restore</strong> replaces ALL current data with a backup file.
-                    Type <code>RESTORE</code> to arm it.</p>
+                <p class="sp-muted">@((MarkupString)L["Backup.RestoreInstruction"].Value)</p>
                 <div style="display:flex; gap:8px">
-                    <input class="sp-lock-input" style="margin:0" placeholder="type RESTORE"
+                    <input class="sp-lock-input" style="margin:0" placeholder="@L["Backup.RestorePlaceholder"]"
                            @bind="_restoreConfirm" @bind:event="oninput" autocomplete="off" />
                     <button class="sp-btn-ghost" disabled="@(_restoreConfirm != "RESTORE")"
-                            @onclick="PickAndRestoreBackup">Choose file…</button>
+                            @onclick="PickAndRestoreBackup">@L["Backup.ChooseFileButton"]</button>
                 </div>
                 @if (!string.IsNullOrEmpty(_backupMsg)) { <div class="sp-muted" style="margin-top:8px">@_backupMsg</div> }
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showBackup = false">Done</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showBackup = false">@L["Common.Done"]</button>
                 </div>
             </div>
         </div>
@@ -616,26 +611,22 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => { if (!_embBusy) _showLocalEmb = false; }">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-sm),94vw)">
-                <h3>Local embeddings</h3>
+                <h3>@L["LocalEmb.Title"]</h3>
                 @if (LocalEmb.IsAvailable)
                 {
-                    <p class="sp-muted">✓ Installed — semantic recall runs 100% on this machine.
-                        Nothing is sent to OpenAI for embeddings and it costs nothing.</p>
+                    <p class="sp-muted">@L["LocalEmb.Installed"]</p>
                 }
                 else
                 {
-                    <p class="sp-muted">Semantic recall currently uses OpenAI embeddings (your text
-                        leaves the machine, masked if masking is on). Installing the local model
-                        (all-MiniLM-L6-v2, ~90 MB, downloaded once from huggingface.co) moves recall
-                        fully on-device and re-embeds your existing data locally.</p>
+                    <p class="sp-muted">@L["LocalEmb.NotInstalled"]</p>
                 }
                 @if (!string.IsNullOrEmpty(_embMsg)) { <div class="sp-muted" style="margin-top:8px">@_embMsg</div> }
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" disabled="@_embBusy" @onclick="() => _showLocalEmb = false">Done</button>
+                    <button class="sp-btn-ghost" disabled="@_embBusy" @onclick="() => _showLocalEmb = false">@L["Common.Done"]</button>
                     @if (!LocalEmb.IsAvailable)
                     {
                         <button class="sp-send" disabled="@_embBusy" @onclick="DownloadLocalModelAsync">
-                            @(_embBusy ? "working…" : "Download & switch")
+                            @(_embBusy ? L["LocalEmb.Working"] : L["LocalEmb.DownloadButton"])
                         </button>
                     }
                 </div>
@@ -652,10 +643,9 @@
     {
         <div class="sp-modal-backdrop" @onclick="CloseLlm">
             <div class="sp-modal sp-llm-modal" @onclick:stopPropagation="true">
-                <h3>LLM settings</h3>
+                <h3>@L["Llm.Title"]</h3>
                 <p class="sp-muted" style="margin:0 0 14px; font-size:13px;">
-                    Choose your inference provider and model, see pricing, and store your API key.
-                    Keys are saved encrypted on this device.
+                    @L["Llm.Blurb"]
                 </p>
 
                 <div class="sp-llm-layout">
@@ -667,8 +657,8 @@
                                     @onclick="() => SelectLlmProvider(p.Id)">
                                 <span class="sp-llm-prov-name">@p.Name</span>
                                 <span class="sp-llm-prov-tags">
-                                    @if (Llm.HasKey(p.Id)) { <span class="sp-llm-pill ok">key</span> }
-                                    @if (!p.Connected) { <span class="sp-llm-pill soon">soon</span> }
+                                    @if (Llm.HasKey(p.Id)) { <span class="sp-llm-pill ok">@L["Llm.KeyPill"]</span> }
+                                    @if (!p.Connected) { <span class="sp-llm-pill soon">@L["Llm.SoonPill"]</span> }
                                 </span>
                             </button>
                         }
@@ -681,42 +671,39 @@
                             <span class="sp-llm-title">@prov.Name</span>
                             @if (!prov.Connected)
                             {
-                                <span class="sp-llm-pill soon">not yet connected</span>
+                                <span class="sp-llm-pill soon">@L["Llm.NotConnectedPill"]</span>
                             }
                             else if (_llmProvider == Providers.Active.ProviderId)
                             {
-                                <span class="sp-llm-pill active">active</span>
+                                <span class="sp-llm-pill active">@L["Llm.ActivePill"]</span>
                             }
                             else
                             {
-                                <button class="sp-llm-use" @onclick="() => UseLlmProvider(_llmProvider)">Use this provider</button>
+                                <button class="sp-llm-use" @onclick="() => UseLlmProvider(_llmProvider)">@L["Llm.UseProviderButton"]</button>
                             }
                         </div>
 
                         @if (prov.Local)
                         {
                             <div class="sp-llm-local-note">
-                                🛡️ <b>Chat</b> runs entirely on your machine via LM Studio's local
-                                server — free, no egress. Note: semantic recall still sends entries to
-                                OpenAI for embeddings (masked) until you install the local embedding
-                                model (<b>⋯ → Local embeddings</b>). Do that for a fully offline loop.
+                                🛡️ @((MarkupString)L["Llm.LocalNote"].Value)
                             </div>
 
-                            <label class="sp-llm-label">Server URL</label>
+                            <label class="sp-llm-label">@L["Llm.ServerUrlLabel"]</label>
                             <div class="sp-llm-key">
                                 <input class="sp-reset-input" style="margin:0;" type="text"
-                                       placeholder="http://localhost:1234/v1" @bind="_llmUrl" @bind:event="oninput" autocomplete="off" />
-                                <button class="sp-send" @onclick="SaveLlmUrl">Save</button>
+                                       placeholder="@L["Llm.ServerUrlPlaceholder"]" @bind="_llmUrl" @bind:event="oninput" autocomplete="off" />
+                                <button class="sp-send" @onclick="SaveLlmUrl">@L["Llm.SaveButton"]</button>
                             </div>
                             <div class="sp-llm-keyhint">
                                 <button class="sp-btn-ghost" @onclick="DetectLmModels" disabled="@_llmDetecting">
-                                    @(_llmDetecting ? "Checking…" : "Detect models")
+                                    @(_llmDetecting ? L["Llm.CheckingButton"] : L["Llm.DetectModelsButton"])
                                 </button>
-                                @if (_llmReachable == true) { <span class="sp-llm-pill ok">reachable</span> }
-                                else if (_llmReachable == false) { <span class="sp-llm-pill soon">no response</span> }
+                                @if (_llmReachable == true) { <span class="sp-llm-pill ok">@L["Llm.ReachablePill"]</span> }
+                                else if (_llmReachable == false) { <span class="sp-llm-pill soon">@L["Llm.NoResponsePill"]</span> }
                             </div>
 
-                            <label class="sp-llm-label">Model</label>
+                            <label class="sp-llm-label">@L["Llm.ModelLabel"]</label>
                             @if (_llmDetected.Count > 0)
                             {
                                 <div class="sp-llm-models">
@@ -731,17 +718,16 @@
                             }
                             <div class="sp-llm-key" style="margin-top:6px;">
                                 <input class="sp-reset-input" style="margin:0;" type="text"
-                                       placeholder="model id loaded in LM Studio" @bind="_llmModel" @bind:event="oninput" autocomplete="off" />
-                                <button class="sp-send" @onclick="SaveLlmModel" disabled="@string.IsNullOrWhiteSpace(_llmModel)">Set</button>
+                                       placeholder="@L["Llm.ModelIdPlaceholder"]" @bind="_llmModel" @bind:event="oninput" autocomplete="off" />
+                                <button class="sp-send" @onclick="SaveLlmModel" disabled="@string.IsNullOrWhiteSpace(_llmModel)">@L["Llm.SetButton"]</button>
                             </div>
                             <div class="sp-llm-keyhint sp-muted">
-                                Load a model in LM Studio and start its server (Developer → Start server).
-                                Memory search still uses your OpenAI embeddings unless disabled.
+                                @L["Llm.LocalHint"]
                             </div>
                         }
                         else
                         {
-                            <label class="sp-llm-label">Model</label>
+                            <label class="sp-llm-label">@L["Llm.ModelLabel"]</label>
                             <div class="sp-llm-models">
                                 @foreach (var m in prov.Models)
                                 {
@@ -753,27 +739,27 @@
                                 }
                             </div>
 
-                            <label class="sp-llm-label">Pricing <span class="sp-muted">(USD / 1M tokens)</span></label>
+                            <label class="sp-llm-label">@L["Llm.PricingLabel"] <span class="sp-muted">@L["Llm.PricingUnit"]</span></label>
                             <div class="sp-llm-prices">
-                                <div><span>Input</span><b>@Price(CurrentLlmModel().Pricing?.InputPerM)</b></div>
-                                <div><span>Cached in</span><b>@Price(CurrentLlmModel().Pricing?.CachedInputPerM)</b></div>
-                                <div><span>Output</span><b>@Price(CurrentLlmModel().Pricing?.OutputPerM)</b></div>
+                                <div><span>@L["Llm.PriceInput"]</span><b>@Price(CurrentLlmModel().Pricing?.InputPerM)</b></div>
+                                <div><span>@L["Llm.PriceCachedIn"]</span><b>@Price(CurrentLlmModel().Pricing?.CachedInputPerM)</b></div>
+                                <div><span>@L["Llm.PriceOutput"]</span><b>@Price(CurrentLlmModel().Pricing?.OutputPerM)</b></div>
                             </div>
 
-                            <label class="sp-llm-label">API key</label>
+                            <label class="sp-llm-label">@L["Llm.ApiKeyLabel"]</label>
                             <div class="sp-llm-key">
                                 <input class="sp-reset-input" style="margin:0;" type="password"
                                        placeholder="@prov.KeyHint" @bind="_llmKey" @bind:event="oninput" autocomplete="off" />
-                                <button class="sp-send" @onclick="SaveLlmKey" disabled="@string.IsNullOrWhiteSpace(_llmKey)">Save</button>
+                                <button class="sp-send" @onclick="SaveLlmKey" disabled="@string.IsNullOrWhiteSpace(_llmKey)">@L["Llm.SaveButton"]</button>
                                 @if (Llm.HasStoredKey(_llmProvider))
                                 {
-                                    <button class="sp-btn-ghost" @onclick="ClearLlmKey">Remove</button>
+                                    <button class="sp-btn-ghost" @onclick="ClearLlmKey">@L["Llm.RemoveKeyButton"]</button>
                                 }
                             </div>
                             <div class="sp-llm-keyhint">
-                                @if (Llm.HasStoredKey(_llmProvider)) { <span class="sp-llm-pill ok">stored key in use</span> }
-                                else if (Llm.HasKey(_llmProvider)) { <span class="sp-muted">using key from .env</span> }
-                                else { <span class="sp-muted">no key yet — </span><a href="@prov.SignupUrl" target="_blank">get one</a> }
+                                @if (Llm.HasStoredKey(_llmProvider)) { <span class="sp-llm-pill ok">@L["Llm.StoredKeyPill"]</span> }
+                                else if (Llm.HasKey(_llmProvider)) { <span class="sp-muted">@L["Llm.EnvKeyText"]</span> }
+                                else { <span class="sp-muted">@L["Llm.NoKeyText"]</span><a href="@prov.SignupUrl" target="_blank">@L["Llm.GetKeyLink"]</a> }
                             </div>
                         }
                         @if (!string.IsNullOrEmpty(_llmMsg)) { <div class="sp-llm-saved">@_llmMsg</div> }
@@ -781,7 +767,7 @@
                 </div>
 
                 <div class="sp-modal-actions" style="margin-top:16px;">
-                    <button class="sp-btn-ghost" @onclick="CloseLlm">Done</button>
+                    <button class="sp-btn-ghost" @onclick="CloseLlm">@L["Common.Done"]</button>
                 </div>
             </div>
         </div>
@@ -791,40 +777,40 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showSecurity = false">
             <div class="sp-modal" @onclick:stopPropagation="true">
-                <h3>Security &amp; privacy</h3>
+                <h3>@L["Security.Title"]</h3>
 
                 <label class="sp-mask-consent" style="margin-bottom:14px;">
                     <input type="checkbox" checked="@_maskOn" @onchange="ToggleMasking" />
                     <span>
-                        <strong>Mask contact details before sending to the AI</strong>
-                        <small>Emails, phone numbers and ID numbers → placeholders. Names are <strong>not</strong> masked. Real values stay encrypted on this device.</small>
+                        <strong>@L["Security.MaskTitle"]</strong>
+                        <small>@((MarkupString)L["Security.MaskDetail"].Value)</small>
                     </span>
                 </label>
 
-                <p class="sp-muted">Change your PIN (re-wraps the same encryption key — your data is kept).</p>
+                <p class="sp-muted">@L["Security.ChangePinBlurb"]</p>
                 <input class="sp-reset-input" type="password" inputmode="numeric" @bind="_newPin" @bind:event="oninput"
-                       placeholder="New PIN (min 4 digits)" autocomplete="off" />
+                       placeholder="@L["Security.NewPinPlaceholder"]" autocomplete="off" />
                 <input class="sp-reset-input" type="password" inputmode="numeric" @bind="_newPin2" @bind:event="oninput"
-                       placeholder="Confirm new PIN" autocomplete="off" />
-                <button class="sp-send" @onclick="ChangePin">Update PIN</button>
+                       placeholder="@L["Security.ConfirmPinPlaceholder"]" autocomplete="off" />
+                <button class="sp-send" @onclick="ChangePin">@L["Security.UpdatePinButton"]</button>
 
                 @if (_helloAvailable)
                 {
-                    <p class="sp-muted" style="margin-top:14px;">Windows Hello</p>
+                    <p class="sp-muted" style="margin-top:14px;">@L["Security.HelloLabel"]</p>
                     <button class="sp-hello-btn" @onclick="ReenrollHello" disabled="@_helloBusy">
                         <span class="sp-hello-glyph">⊞</span>
-                        <span>@(_helloBusy ? "Waiting for Windows Hello…" : (HelloKeys.Exists ? "Re-enroll Windows Hello" : "Enable Windows Hello"))</span>
+                        <span>@(_helloBusy ? L["Lock.HelloWaiting"] : (HelloKeys.Exists ? L["Security.ReenrollHelloButton"] : L["Security.EnableHelloButton"]))</span>
                     </button>
                     @if (HelloKeys.Exists)
                     {
-                        <button class="sp-btn-ghost" @onclick="RemoveHello">Remove Windows Hello</button>
+                        <button class="sp-btn-ghost" @onclick="RemoveHello">@L["Security.RemoveHelloButton"]</button>
                     }
                 }
 
                 @if (!string.IsNullOrEmpty(_secMsg)) { <div class="sp-lock-err" style="color:#28e070">@_secMsg</div> }
 
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showSecurity = false">Done</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showSecurity = false">@L["Common.Done"]</button>
                 </div>
             </div>
         </div>

@@ -148,32 +148,32 @@ public partial class Home
     private void ChangePin()
     {
         _secMsg = "";
-        if (_sessionKey is null) { _secMsg = "Unlock first."; return; }
+        if (_sessionKey is null) { _secMsg = L["Security.UnlockFirst"]; return; }
         var pin = _newPin.Trim();
-        if (pin.Length < 6) { _secMsg = "New PIN must be at least 6 digits."; return; }
-        if (pin != _newPin2.Trim()) { _secMsg = "PINs don't match."; return; }
+        if (pin.Length < 6) { _secMsg = L["Security.NewPinTooShort"]; return; }
+        if (pin != _newPin2.Trim()) { _secMsg = L["Security.PinsDontMatch"]; return; }
         try
         {
             Vault.CreateOrAddPin(pin, _sessionKey);                // re-wrap the SAME key with the new PIN
             _newPin = _newPin2 = "";
             _secMsg = L["Lock.PinUpdated"];
         }
-        catch (Exception ex) { _secMsg = $"Couldn't save the new PIN — after a restart the previous PIN still applies. ({ex.Message})"; }
+        catch (Exception ex) { _secMsg = L["Security.PinSaveFailed", ex.Message]; }
     }
 
     private async Task ReenrollHello()
     {
         _secMsg = "";
-        if (_sessionKey is null) { _secMsg = "Unlock first."; return; }
+        if (_sessionKey is null) { _secMsg = L["Security.UnlockFirst"]; return; }
         _helloBusy = true; StateHasChanged();
         var ok = await Hello.VerifyAsync("Enable Windows Hello for SemanticPortrait");
         _helloBusy = false;
-        if (ok) { HelloKeys.Seal(_sessionKey); _secMsg = "✓ Windows Hello enrolled."; }
-        else _secMsg = "Windows Hello didn't complete.";
+        if (ok) { HelloKeys.Seal(_sessionKey); _secMsg = L["Security.HelloEnrolled"]; }
+        else _secMsg = L["Lock.HelloDidNotComplete"];
         StateHasChanged();
     }
 
-    private void RemoveHello() { HelloKeys.Clear(); _secMsg = "Windows Hello removed."; }
+    private void RemoveHello() { HelloKeys.Clear(); _secMsg = L["Security.HelloRemoved"]; }
 
     private void OpenSecurity()
     {

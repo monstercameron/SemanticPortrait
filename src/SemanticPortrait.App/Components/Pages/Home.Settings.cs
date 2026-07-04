@@ -53,14 +53,14 @@ public partial class Home
     private void SaveLlmUrl()
     {
         Llm.SetBaseUrl(_llmProvider, _llmUrl);
-        _llmMsg = "Server URL saved."; _llmReachable = null;
+        _llmMsg = L["Llm.ServerUrlSaved"]; _llmReachable = null;
     }
     private void SaveLlmModel()
     {
         if (string.IsNullOrWhiteSpace(_llmModel)) return;
         Llm.SetModel(_llmProvider, _llmModel.Trim());
         RefreshProviderChip();
-        _llmMsg = "Model set.";
+        _llmMsg = L["Llm.ModelSet"];
     }
     private async Task DetectLmModels()
     {
@@ -71,7 +71,7 @@ public partial class Home
             _llmReachable = await LmStudio.PingAsync();
             _llmDetected = (await LmStudio.ListModelsAsync()).ToList();
             if (_llmReachable == true && _llmDetected.Count == 0)
-                _llmMsg = "Server is up but no model is loaded — load one in LM Studio.";
+                _llmMsg = L["Llm.ServerUpNoModel"];
             else if (_llmReachable == true && string.IsNullOrWhiteSpace(_llmModel))
                 _llmModel = _llmDetected[0];
         }
@@ -82,26 +82,26 @@ public partial class Home
         _llmModel = id;
         Llm.SetModel(_llmProvider, id);
         RefreshProviderChip();
-        _llmMsg = "Model set.";
+        _llmMsg = L["Llm.ModelSet"];
     }
     // Activate a provider via the shared ProviderRegistry seam (so it composes with parallel work).
     private void UseLlmProvider(string id)
     {
         Providers.Select(id);
         RefreshProviderChip();
-        _llmMsg = "Provider selected.";
+        _llmMsg = L["Llm.ProviderSelected"];
     }
     private void SaveLlmKey()
     {
         if (string.IsNullOrWhiteSpace(_llmKey)) return;
         Llm.SetKey(_llmProvider, _llmKey);
-        _llmKey = ""; _llmMsg = "API key saved (encrypted).";
+        _llmKey = ""; _llmMsg = L["Llm.ApiKeySaved"];
         RefreshProviderChip();
     }
     private void ClearLlmKey()
     {
         Llm.SetKey(_llmProvider, null);
-        _llmMsg = "Stored key removed.";
+        _llmMsg = L["Llm.KeyRemoved"];
         RefreshProviderChip();
     }
     private void RefreshProviderChip() => _provider = Providers.Active.DisplayName;
@@ -145,16 +145,16 @@ public partial class Home
             // The DB is encrypted; the export is not. Say so — and flag a OneDrive-redirected
             // Desktop, where "a file on my desk" is actually "uploaded to Microsoft".
             var warn = _expMasked
-                ? "masked (shareable) copy — emails/phones/IDs are pseudonymized (NAMES are not), and content can still re-identify"
-                : "the export is a plaintext copy of your whole journal — delete it when you're done";
+                ? L["Export.WarnMasked"].Value
+                : L["Export.WarnPlain"].Value;
             if (folder.Contains("OneDrive", StringComparison.OrdinalIgnoreCase))
-                warn += ". ⚠ This Desktop syncs to OneDrive, so it WILL upload to the cloud";
-            _messages.Add(new() { Role = "sys", Text = $"⬇ exported json/md/csv/mmd/graphml to {path} ({warn})" });
+                warn += L["Export.WarnOneDrive"].Value;
+            _messages.Add(new() { Role = "sys", Text = "⬇ " + L["Export.Exported", path, warn].Value });
             _showExport = false;
         }
         catch (Exception ex)
         {
-            _expMsg = $"export failed: {ex.Message}";
+            _expMsg = L["Export.Failed", ex.Message];
         }
         StateHasChanged();
     }
@@ -174,13 +174,13 @@ public partial class Home
             var folder = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             var path = Path.Combine(folder, $"SemanticPortrait-journal-{DateTime.Now:yyyyMMdd-HHmm}.pdf");
             File.WriteAllBytes(path, pdf);
-            var warn = "a plaintext book of your entries — delete it when you're done";
+            var warn = L["Export.PdfWarnPlain"].Value;
             if (folder.Contains("OneDrive", StringComparison.OrdinalIgnoreCase))
-                warn += ". ⚠ This Desktop syncs to OneDrive, so it WILL upload to the cloud";
-            _messages.Add(new() { Role = "sys", Text = $"📖 exported your journal as a PDF to {path} ({warn})" });
+                warn += L["Export.WarnOneDrive"].Value;
+            _messages.Add(new() { Role = "sys", Text = "📖 " + L["Export.PdfExported", path, warn].Value });
             _showExport = false;
         }
-        catch (Exception ex) { _expMsg = $"PDF export failed: {ex.Message}"; }
+        catch (Exception ex) { _expMsg = L["Export.PdfFailed", ex.Message]; }
         StateHasChanged();
     }
 
@@ -198,10 +198,10 @@ public partial class Home
             var path = Path.Combine(folder, $"semanticportrait-backup-{DateTime.UtcNow:yyyyMMdd-HHmmss}.spdb");
             Database.BackupTo(path);
             _backupMsg = _sessionKey is not null
-                ? $"✓ backed up to {path} — the file is encrypted with your current key."
-                : $"✓ backed up to {path} — ⚠ dev/plaintext database, the backup is NOT encrypted.";
+                ? "✓ " + L["Backup.Success", path].Value
+                : "✓ " + L["Backup.SuccessPlaintext", path].Value;
         }
-        catch (Exception ex) { _backupMsg = $"backup failed: {ex.Message}"; }
+        catch (Exception ex) { _backupMsg = L["Backup.Failed", ex.Message]; }
     }
 
     private async Task PickAndRestoreBackup()
@@ -209,22 +209,22 @@ public partial class Home
         if (_locked || _configuring) return;
         if (_restoreConfirm != "RESTORE")
         {
-            _backupMsg = "Type RESTORE to confirm — restoring replaces ALL current data with the backup.";
+            _backupMsg = L["Backup.ConfirmRequired"];
             return;
         }
         try
         {
             var picked = await Microsoft.Maui.Storage.FilePicker.Default.PickAsync(
-                new Microsoft.Maui.Storage.PickOptions { PickerTitle = "Restore SemanticPortrait backup (.spdb)" });
+                new Microsoft.Maui.Storage.PickOptions { PickerTitle = L["Backup.PickerTitle"] });
             if (picked is null) return;
             Database.RestoreFrom(picked.FullPath, _sessionKey);   // rolls back automatically on failure
             _restoreConfirm = ""; _showBackup = false;
             LoadThread();
-            _messages.Add(new() { Role = "sys", Text = $"🔐 restored from {picked.FileName}" });
+            _messages.Add(new() { Role = "sys", Text = "🔐 " + L["Backup.Restored", picked.FileName].Value });
         }
         catch (Exception ex)
         {
-            _backupMsg = $"restore failed — the previous data is untouched. ({ex.Message})";
+            _backupMsg = L["Backup.RestoreFailed", ex.Message];
         }
         StateHasChanged();
     }
@@ -242,7 +242,7 @@ public partial class Home
     private async Task DownloadLocalModelAsync()
     {
         if (_embBusy || LocalEmb.IsAvailable) return;
-        _embBusy = true; _embMsg = "downloading model (~90 MB from huggingface.co)…"; StateHasChanged();
+        _embBusy = true; _embMsg = L["LocalEmb.Downloading"]; StateHasChanged();
         try
         {
             Directory.CreateDirectory(LocalEmb.ModelDir);
@@ -253,13 +253,12 @@ public partial class Home
             await File.WriteAllBytesAsync(LocalEmb.VocabPath, await http.GetByteArrayAsync(MiniLmVocabUrl));
             File.Move(tmpModel, LocalEmb.ModelPath, true);
 
-            _embMsg = "re-embedding your data locally…"; StateHasChanged();
+            _embMsg = L["LocalEmb.Reembedding"]; StateHasChanged();
             var (done, failed) = await ReembedAllAsync();
-            _embMsg = $"✓ local embeddings active — re-embedded {done} item(s)" +
-                      (failed > 0 ? $" ({failed} failed; they re-embed on next edit)" : "") +
-                      ". Nothing leaves the machine for recall anymore.";
+            var failedSuffix = failed > 0 ? L["LocalEmb.FailedSuffix", failed].Value : "";
+            _embMsg = L["LocalEmb.Active", done, failedSuffix];
         }
-        catch (Exception ex) { _embMsg = $"download failed: {ex.Message}"; }
+        catch (Exception ex) { _embMsg = L["LocalEmb.DownloadFailed", ex.Message]; }
         finally { _embBusy = false; StateHasChanged(); }
     }
 
