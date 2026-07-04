@@ -39,6 +39,7 @@ public partial class Home
         }
         _voice = new SidecarVoice(Pref("voice_py"), Pref("voice_dir"));
         _voiceAvailable = _voice.Available;
+        VoiceAudio.SweepStaleTempFiles();   // clear any orphaned plaintext voice WAVs from a prior crash
         // The agent's consent-gated setup surface; download progress lands as quiet sys lines.
         _voiceTools = new VoiceTools(_voice, msg =>
             _ = InvokeAsync(() => { _messages.Add(new() { Role = "sys", Text = msg }); _scrollDown = true; StateHasChanged(); })

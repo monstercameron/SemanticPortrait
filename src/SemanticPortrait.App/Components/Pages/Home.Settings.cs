@@ -145,7 +145,7 @@ public partial class Home
             // The DB is encrypted; the export is not. Say so — and flag a OneDrive-redirected
             // Desktop, where "a file on my desk" is actually "uploaded to Microsoft".
             var warn = _expMasked
-                ? "masked (shareable) copy — names/emails/phones are pseudonymized, but content can still re-identify"
+                ? "masked (shareable) copy — emails/phones/IDs are pseudonymized (NAMES are not), and content can still re-identify"
                 : "the export is a plaintext copy of your whole journal — delete it when you're done";
             if (folder.Contains("OneDrive", StringComparison.OrdinalIgnoreCase))
                 warn += ". ⚠ This Desktop syncs to OneDrive, so it WILL upload to the cloud";
@@ -287,7 +287,7 @@ public partial class Home
     private string EgressSummary()
     {
         var provider = Providers.Active;
-        var maskOn = Microsoft.Maui.Storage.Preferences.Default.Get("masking", false);
+        var maskOn = Microsoft.Maui.Storage.Preferences.Default.Get("masking", true);
         var chat = provider.ProviderId == "lmstudio"
             ? "chat: local (nothing leaves)"
             : $"chat: {provider.DisplayName}{(maskOn ? " (masked)" : " (unmasked)")}";

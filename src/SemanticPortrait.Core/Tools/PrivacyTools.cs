@@ -44,7 +44,7 @@ public sealed class PrivacyTools
         sb.AppendLine(local
             ? $"chat model: {p.DisplayName} — LOCAL; conversation content does not leave this machine."
             : $"chat model: {p.DisplayName} — CLOUD; entries are sent to this provider under its privacy policy"
-              + (mask ? ", with local PII masking applied first (names/emails/phones pseudonymized — harm reduction, not anonymity)."
+              + (mask ? ", with local PII masking applied first (emails, phone numbers and ID numbers pseudonymized — but NAMES are NOT masked, and free text can still re-identify; harm reduction, not anonymity)."
                       : ", UNMASKED (PII masking is off)."));
         sb.AppendLine(_localEmbeddings()
             ? "semantic recall: LOCAL on-device embeddings — the index never touches the network."

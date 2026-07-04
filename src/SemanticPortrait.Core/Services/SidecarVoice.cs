@@ -52,8 +52,10 @@ public sealed class SidecarVoice
         var viaServer = await ServerRequestAsync(
             System.Text.Json.JsonSerializer.Serialize(new { op = "tts", text, @out = outWavPath }), ct);
         if (viaServer is not null && File.Exists(outWavPath)) return outWavPath;
-        // The CLI takes the text as one argv element; strip quotes so it can't break out of them.
-        var safe = text.Replace('"', '″');
+        // The CLI takes the text as one argv element; neutralize the two chars that could break
+        // out of the quoted arg on Windows argv parsing — the quote itself AND a trailing/interior
+        // backslash (…\" reads as an escaped quote). Reply/user text is untrusted content.
+        var safe = text.Replace('"', '″').Replace('\\', '⧵');
         var output = await RunAsync($"-m whispertome test-tts \"{safe}\" --out \"{outWavPath}\"", ct);
         return output is not null && File.Exists(outWavPath) ? outWavPath : null;
     }

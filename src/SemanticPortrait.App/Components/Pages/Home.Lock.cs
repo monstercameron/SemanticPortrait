@@ -93,6 +93,8 @@ public partial class Home
         _notifs.Clear();
         _constModel = null;
         Trace.Clear();                  // dev traces carry entry text
+        // Scrub the key bytes before dropping the reference — shrinks the memory-dump window.
+        if (_sessionKey is not null) System.Security.Cryptography.CryptographicOperations.ZeroMemory(_sessionKey);
         _sessionKey = null;
         StateHasChanged();
     }
@@ -116,8 +118,11 @@ public partial class Home
     {
         _lockMsg = "";
         var pin = _cfgPin.Trim();
-        if (pin.Length < 6) { _lockMsg = "Set a PIN of at least 6 digits (it's your recovery key — longer is stronger)."; return; }
-        if (pin != _cfgPin2.Trim()) { _lockMsg = "PINs don't match."; return; }
+        // This passcode is the cryptographic floor of the whole vault. A 6-digit numeric PIN is
+        // only ~20 bits — offline-brute-forceable on a stolen device even at 600k PBKDF2 iters.
+        // Encourage a longer alphanumeric passphrase; require at least 6 chars.
+        if (pin.Length < 6) { _lockMsg = "Set a passcode of at least 6 characters — a longer passphrase with letters is far stronger (it's the key to your whole vault)."; return; }
+        if (pin != _cfgPin2.Trim()) { _lockMsg = "Passcodes don't match."; return; }
 
         try
         {
@@ -173,7 +178,7 @@ public partial class Home
     private void OpenSecurity()
     {
         _secMsg = ""; _newPin = _newPin2 = "";
-        _maskOn = Microsoft.Maui.Storage.Preferences.Default.Get("masking", false);
+        _maskOn = Microsoft.Maui.Storage.Preferences.Default.Get("masking", true);
         if (!Vault.Exists) { _configuring = true; return; }   // no lock yet → set one up
         _showSecurity = true;
     }

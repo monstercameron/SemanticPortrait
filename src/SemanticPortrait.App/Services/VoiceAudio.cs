@@ -170,4 +170,18 @@ public sealed class VoiceAudio : IDisposable
     }
 
     public void Dispose() { StopContinuous(); StopRecording(); StopPlayback(); }
+
+    /// <summary>Delete stale voice temp WAVs from prior runs (crash/kill can orphan them). The
+    /// spoken journal must not linger as plaintext audio in %TEMP%. Called at startup.</summary>
+    public static void SweepStaleTempFiles()
+    {
+        try
+        {
+            var tmp = Path.GetTempPath();
+            foreach (var pat in new[] { "sp_voice_*.wav", "sp_utt_*.wav", "sp_tts_*.wav" })
+                foreach (var f in Directory.EnumerateFiles(tmp, pat))
+                    try { File.Delete(f); } catch { /* in use / gone */ }
+        }
+        catch { /* temp unavailable — nothing to sweep */ }
+    }
 }

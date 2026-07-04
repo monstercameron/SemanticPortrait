@@ -116,7 +116,7 @@ public static class MauiProgram
 		// Egress masking: on/off from the onboarding consent (persisted). RegexMasker now; on-device NER later.
 		builder.Services.AddSingleton<IMasker>(sp => new RegexMasker(
 			sp.GetRequiredService<Db>(),
-			enabled: () => Microsoft.Maui.Storage.Preferences.Default.Get("masking", false)));
+			enabled: () => Microsoft.Maui.Storage.Preferences.Default.Get("masking", true)));
 		// Embeddings: local MiniLM when installed (nothing leaves, free); else cloud — masked,
 		// because embedding text otherwise bypasses the egress consent.
 		builder.Services.AddSingleton(new LocalEmbedder(Path.Combine(dataDir, "models", "minilm")));
@@ -173,7 +173,7 @@ public static class MauiProgram
 			setCheckinHour: h => Microsoft.Maui.Storage.Preferences.Default.Set("checkin_hour", h)));
 		// Read-only privacy awareness for the agent (report, never toggle — consent stays the user's).
 		builder.Services.AddSingleton(sp => new PrivacyTools(
-			() => Microsoft.Maui.Storage.Preferences.Default.Get("masking", false),
+			() => Microsoft.Maui.Storage.Preferences.Default.Get("masking", true),
 			sp.GetRequiredService<ProviderRegistry>(),
 			() => ((PreferLocalEmbedder)sp.GetRequiredService<IEmbedder>()).LocalActive));
 		builder.Services.AddSingleton<ProgramTools>();

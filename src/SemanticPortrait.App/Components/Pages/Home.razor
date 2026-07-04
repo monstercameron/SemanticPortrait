@@ -63,19 +63,20 @@
                     <p class="sp-muted">Windows Hello isn't available here — set a PIN.</p>
                 }
 
-                <input class="sp-lock-input" type="password" inputmode="numeric" @bind="_cfgPin" @bind:event="oninput"
-                       placeholder="PIN (min 6 digits — longer is stronger)" autocomplete="off" />
-                <input class="sp-lock-input" type="password" inputmode="numeric" @bind="_cfgPin2" @bind:event="oninput"
-                       placeholder="Confirm PIN" autocomplete="off" />
+                <input class="sp-lock-input" type="password" @bind="_cfgPin" @bind:event="oninput"
+                       placeholder="Passcode (min 6 — a letters+numbers passphrase is far stronger)" autocomplete="off" />
+                <input class="sp-lock-input" type="password" @bind="_cfgPin2" @bind:event="oninput"
+                       placeholder="Confirm passcode" autocomplete="off" />
                 @if (!string.IsNullOrEmpty(_lockMsg)) { <div class="sp-lock-err">@_lockMsg</div> }
 
                 <label class="sp-mask-consent">
                     <input type="checkbox" @bind="_cfgMask" />
                     <span>
-                        <strong>Mask personal details before they leave this device</strong>
-                        <small>Names, emails, phone numbers etc. are swapped for placeholders (PERSON_1…)
-                        before any text is sent to the AI; the real values stay encrypted on this machine.
-                        Recommended. You can change this later in Security.</small>
+                        <strong>Mask contact details before they leave this device</strong>
+                        <small>Emails, phone numbers, and ID numbers are swapped for placeholders
+                        before text is sent to the AI. <em>Names are not masked yet</em> — and free
+                        text can still identify you, so treat this as harm-reduction, not anonymity.
+                        For full privacy, use a local model (⋯ → LLM settings). Changeable in Security.</small>
                     </span>
                 </label>
 
@@ -419,8 +420,8 @@
                 <label class="sp-mask-consent" style="margin-top:8px">
                     <input type="checkbox" @bind="_expMasked" />
                     <span><strong>Masked (shareable)</strong>
-                    <small>Names, emails and phone numbers are replaced with placeholders. Content can
-                    still re-identify you — share thoughtfully.</small></span>
+                    <small>Emails, phone numbers and IDs are replaced with placeholders.
+                    <em>Names are not masked</em>, and content can still re-identify you — share thoughtfully.</small></span>
                 </label>
                 @if (!string.IsNullOrEmpty(_expMsg)) { <div class="sp-lock-err">@_expMsg</div> }
                 <div class="sp-modal-actions">
