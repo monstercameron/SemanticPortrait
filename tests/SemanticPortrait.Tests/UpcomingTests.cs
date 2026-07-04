@@ -27,14 +27,17 @@ public class UpcomingTests : IDisposable
     [Fact]
     public void Agenda_groups_by_when_it_lands_and_carries_ids()
     {
-        var now = DateTime.UtcNow;
+        // Deterministic clock: anchor "now" at LOCAL noon so a +2h reminder can't cross midnight
+        // into TOMORROW (the old real-clock version flaked when run late in the evening).
+        var nowLocal = DateTime.Today.AddHours(12);
+        var now = nowLocal.ToUniversalTime();
         var overdueId = _db.AddReminder(Iso(now.AddHours(-3)), "restring racquet");
-        var todayId = _db.AddReminder(Iso(now.AddHours(2)), "buy the iPad");
+        var todayId = _db.AddReminder(Iso(now.AddHours(2)), "buy the iPad");     // 2pm local — same day
         var laterId = _db.AddReminder(Iso(now.AddDays(10)), "renew passport");
         _db.AddEvent(Iso(now.AddDays(1).Date.AddHours(18)), "tennis with Alex");
         var todoId = _db.AddTodo("clean the garage");
 
-        var agenda = _tools.BuildUpcoming(14);
+        var agenda = _tools.BuildUpcoming(14, now);
 
         Assert.Contains("OVERDUE:", agenda);
         Assert.Contains($"[reminder #{overdueId}]", agenda);

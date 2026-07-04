@@ -58,6 +58,28 @@ public sealed partial class Db
         }
     }
 
+    /// <summary>The id of the FIRST user entry on a given LOCAL day (for a calendar day → thread
+    /// jump), or null if that day has no entries.</summary>
+    public long? FirstEntryOnDay(int year, int month, int day)
+    {
+        lock (_gate)
+        {
+            var target = new DateTime(year, month, day);
+            var start = target.AddDays(-1).ToUniversalTime().ToString("o");
+            var end = target.AddDays(2).ToUniversalTime().ToString("o");
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = "SELECT id, created_utc FROM messages WHERE role='user' AND created_utc >= $a AND created_utc < $b ORDER BY id;";
+            cmd.Parameters.AddWithValue("$a", start);
+            cmd.Parameters.AddWithValue("$b", end);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                if (DateTime.TryParse(r.GetString(1), null, System.Globalization.DateTimeStyles.RoundtripKind, out var d)
+                    && d.ToLocalTime().Date == target)
+                    return r.GetInt64(0);
+            return null;
+        }
+    }
+
     /// <summary>Per-entry (localDate, valence, energy) for the mood-over-time chart, oldest first.</summary>
     public List<(DateTime LocalDate, double Valence, double Energy)> MoodSeries()
     {

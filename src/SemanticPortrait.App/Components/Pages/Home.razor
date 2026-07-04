@@ -516,7 +516,7 @@
                     {
                         <button class="sp-search-hit" @onclick="() => JumpToEntry(hit.Id)">
                             <span class="sp-muted">@FmtWhen(hit.WhenUtc)</span>
-                            <span>@hit.Snippet</span>
+                            <span>@Highlight(hit.Snippet, _searchQuery)</span>
                         </button>
                     }
                 }
@@ -588,6 +588,10 @@
                         <path d="@MoodPath(mood, energy: false)" fill="none" stroke="#19d3ff" stroke-width="1.1" vector-effect="non-scaling-stroke" />
                         <path d="@MoodPath(mood, energy: true)" fill="none" stroke="#ffb347" stroke-width="0.8" stroke-dasharray="2 2" vector-effect="non-scaling-stroke" opacity="0.7" />
                     </svg>
+                    <div class="sp-mood-axis">
+                        <span>@mood[0].LocalDate.ToString("MMM d, yyyy")</span>
+                        <span>@mood[^1].LocalDate.ToString("MMM d, yyyy")</span>
+                    </div>
                     <p class="sp-muted" style="font-size:11px">
                         <span style="color:#19d3ff">— valence</span> (up = positive) ·
                         <span style="color:#ffb347">- - energy</span> · @mood.Count entries
@@ -615,10 +619,12 @@
                     @for (var b = 0; b < blanks; b++) { <div class="sp-cal-cell"></div> }
                     @for (var d = 1; d <= daysIn; d++)
                     {
-                        var has = cal.TryGetValue(d, out var info);
+                        var day = d;
+                        var has = cal.TryGetValue(day, out var info);
                         var style = has ? $"background:{DayTint(info.MeanValence)}" : "";
                         <div class="sp-cal-cell @(has ? "on" : "")" style="@style"
-                             title="@(has ? $"{info.Count} entr{(info.Count==1?"y":"ies")}" : "")">@d</div>
+                             title="@(has ? $"{info.Count} entr{(info.Count==1?"y":"ies")} — click to open" : "")"
+                             @onclick="@(has ? (() => JumpToDay(day)) : (Action)(() => {}))">@day</div>
                     }
                 </div>
 
@@ -977,8 +983,14 @@
                                         <div class="sp-bubble-photos">
                                             @foreach (var ph in photos)
                                             {
-                                                <img class="sp-entry-photo" src="@ph.ThumbDataUri" alt="@(ph.Caption ?? "photo")"
-                                                     @onclick="() => OpenLightbox(ph.Id)" />
+                                                <figure class="sp-entry-fig">
+                                                    <img class="sp-entry-photo" src="@ph.ThumbDataUri" alt="@(ph.Caption ?? "photo")"
+                                                         @onclick="() => OpenLightbox(ph.Id)" />
+                                                    @if (!string.IsNullOrWhiteSpace(ph.Caption))
+                                                    {
+                                                        <figcaption class="sp-entry-cap">@ph.Caption</figcaption>
+                                                    }
+                                                </figure>
                                             }
                                         </div>
                                     }
@@ -1042,9 +1054,14 @@
                         @for (var pi = 0; pi < _pendingPhotos.Count; pi++)
                         {
                             var idx = pi;
-                            <div class="sp-photo-chip">
-                                <img src="@_pendingPhotos[idx].Preview" alt="attachment" />
-                                <button class="sp-photo-x" title="Remove" @onclick="() => RemovePendingPhoto(idx)">×</button>
+                            <div class="sp-photo-pending">
+                                <div class="sp-photo-chip">
+                                    <img src="@_pendingPhotos[idx].Preview" alt="attachment" />
+                                    <button class="sp-photo-x" title="Remove" @onclick="() => RemovePendingPhoto(idx)">×</button>
+                                </div>
+                                <input class="sp-photo-caption" placeholder="caption (optional)"
+                                       value="@_pendingPhotos[idx].Caption"
+                                       @onchange="@(e => _pendingPhotos[idx].Caption = e.Value?.ToString() ?? "")" />
                             </div>
                         }
                     </div>

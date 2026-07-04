@@ -36,6 +36,14 @@ public partial class Home
     private DateTime _calMonth = new(DateTime.Now.Year, DateTime.Now.Month, 1);
 
     private void OpenInsights() { _showInsights = true; _calMonth = new(DateTime.Now.Year, DateTime.Now.Month, 1); }
+
+    /// <summary>Click a calendar day → jump the thread to that day's first entry.</summary>
+    private async Task JumpToDay(int day)
+    {
+        if (!Database.IsOpen) return;
+        var id = Database.FirstEntryOnDay(_calMonth.Year, _calMonth.Month, day);
+        if (id is { } mid) { _showInsights = false; await JumpToEntry(mid); }
+    }
     private void CalPrev() => _calMonth = _calMonth.AddMonths(-1);
     private void CalNext() { var n = _calMonth.AddMonths(1); if (n <= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1)) _calMonth = n; }
 
@@ -57,6 +65,25 @@ public partial class Home
 
     /// <summary>Calendar cell tint from a day's mean valence (green ↔ red), or transparent for
     /// a day with no entries.</summary>
+    /// <summary>Wrap each case-insensitive occurrence of the query in the snippet with &lt;mark&gt;.
+    /// HTML-encodes the surrounding text so a snippet can't inject markup.</summary>
+    private static MarkupString Highlight(string snippet, string query)
+    {
+        var q = query.Trim();
+        if (q.Length == 0) return (MarkupString)System.Net.WebUtility.HtmlEncode(snippet);
+        var sb = new System.Text.StringBuilder();
+        int i = 0;
+        while (i < snippet.Length)
+        {
+            var hit = snippet.IndexOf(q, i, StringComparison.OrdinalIgnoreCase);
+            if (hit < 0) { sb.Append(System.Net.WebUtility.HtmlEncode(snippet[i..])); break; }
+            sb.Append(System.Net.WebUtility.HtmlEncode(snippet[i..hit]));
+            sb.Append("<mark>").Append(System.Net.WebUtility.HtmlEncode(snippet.Substring(hit, q.Length))).Append("</mark>");
+            i = hit + q.Length;
+        }
+        return (MarkupString)sb.ToString();
+    }
+
     private static string FmtWhen(string utc) =>
         DateTime.TryParse(utc, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d)
             ? d.ToLocalTime().ToString("MMM d, yyyy") : utc;

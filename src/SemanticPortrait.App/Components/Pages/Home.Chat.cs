@@ -205,8 +205,10 @@ public partial class Home
         // Photos ride WITH the entry: a tag keeps a photo-only entry from embedding empty text and
         // tells the analyst something visual was shared (it can't see pixels, but it knows they exist).
         var photoTag = _pendingPhotos.Count is var pn and > 0 ? $"[shared {pn} photo{(pn == 1 ? "" : "s")}]" : "";
-        var persistText = string.IsNullOrEmpty(photoTag) ? userText
-            : (userText.Length > 0 ? userText + "\n" + photoTag : photoTag);
+        var captionText = PendingCaptionText();   // the user's own words about the images
+        var meta = string.Join("\n", new[] { photoTag, captionText }.Where(s => s.Length > 0));
+        var persistText = meta.Length == 0 ? userText
+            : (userText.Length > 0 ? userText + "\n" + meta : meta);
 
         // Temporal context: how long since their last message (before we add this one).
         var prev = Database.GetMessages().LastOrDefault(m => m.Role is "user" or "assistant");
