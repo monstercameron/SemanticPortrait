@@ -263,7 +263,7 @@ public class DbTests : IDisposable
     [Fact]
     public void Compactor_window_is_two_days()
     {
-        Assert.Equal(TimeSpan.FromDays(2), Compactor.Window);
+        Assert.Equal(2, new AppConfig().Compaction.WindowDays);
         var now = new DateTime(2026, 6, 21, 12, 0, 0, DateTimeKind.Utc);
         var db = NewDb();
         var c = new Compactor(db, new ProviderRegistry(new IChatProvider[] { new OpenAIClient(new System.Net.Http.HttpClient(), new UsageTracker(), new LlmConfig(db)) }));

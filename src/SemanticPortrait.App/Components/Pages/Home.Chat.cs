@@ -37,7 +37,7 @@ public partial class Home
     private bool ShouldPaintStream()
     {
         var now = DateTime.UtcNow;
-        if ((now - _lastStreamPaint).TotalMilliseconds < 33) return false;
+        if ((now - _lastStreamPaint).TotalMilliseconds < Config.Ui.StreamRepaintMs) return false;
         _lastStreamPaint = now;
         return true;
     }
@@ -67,7 +67,7 @@ public partial class Home
         var clean = new System.Text.StringBuilder();
         try
         {
-            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(4));
+            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(Config.Timeouts.ProactiveStreamMinutes));
             await foreach (var tok in Ai.StreamReplyAsync(sys, new[] { new ChatMessage("user", kickInstruction) }, specs, Exec,
                 onError: err =>
                 {
@@ -138,7 +138,7 @@ public partial class Home
         var clean = new System.Text.StringBuilder();
         try
         {
-            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(4));
+            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(Config.Timeouts.ProactiveStreamMinutes));
             await foreach (var tok in Ai.StreamReplyAsync(sys, kick,
                 onError: err =>
                 {
@@ -345,7 +345,7 @@ public partial class Home
             // (observed live: 21 min at 0% CPU) — without this, _busy pins forever and the
             // composer is dead until an app restart. Generous cap: multi-tool turns are slow,
             // dead streams are forever.
-            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(5));
+            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(Config.Timeouts.MainStreamMinutes));
             await foreach (var token in Ai.StreamReplyAsync(systemPrompt, history, specs, Exec,
                 onReasoning: r => Trace.Add("main", "thought", "reasoning", r),
                 // A silent provider failure looks like the agent "just stopped thinking" —
@@ -367,7 +367,7 @@ public partial class Home
         catch (OperationCanceledException)
         {
             reply.Text += "\n[the reply stalled and was cancelled — send again to retry]";
-            DevTrap.Report("send-stream-stalled", new TimeoutException("main stream watchdog fired (5 min)"));
+            DevTrap.Report("send-stream-stalled", new TimeoutException($"main stream watchdog fired ({Config.Timeouts.MainStreamMinutes} min)"));
         }
         catch (Exception ex)
         {
@@ -426,7 +426,7 @@ public partial class Home
         {
             // Watchdog: a wedged analyst stream would silently strand the reflection forever;
             // cancelling routes it into the retry queue like any provider failure.
-            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(8));
+            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(Config.Timeouts.AnalystStreamMinutes));
             await Analyst.ReflectAsync(entryId, rawEntry, distilled, "", OnAnalystTool,
                 onProviderError: _ => failed = true, ct: watchdog.Token);
         }

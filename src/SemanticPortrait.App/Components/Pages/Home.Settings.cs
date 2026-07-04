@@ -246,7 +246,7 @@ public partial class Home
         try
         {
             Directory.CreateDirectory(LocalEmb.ModelDir);
-            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(Config.Timeouts.ExportHttpMinutes) };
             // temp + atomic move so a half-download never counts as installed
             var tmpModel = LocalEmb.ModelPath + ".part";
             await File.WriteAllBytesAsync(tmpModel, await http.GetByteArrayAsync(MiniLmModelUrl));

@@ -240,8 +240,8 @@ public partial class Home
                 if (++_pinFails >= MaxPinFails)
                 {
                     _pinFails = 0;
-                    _pinHoldUntil = DateTime.UtcNow.AddSeconds(30);
-                    _lockMsg = "Too many wrong attempts — locked for 30 seconds.";
+                    _pinHoldUntil = DateTime.UtcNow.AddSeconds(Config.Ui.PinHoldSeconds);
+                    _lockMsg = $"Too many wrong attempts — locked for {Config.Ui.PinHoldSeconds} seconds.";
                 }
                 else if (showError) { _lockMsg = "Wrong PIN."; _pinEntry = ""; }
                 StateHasChanged();

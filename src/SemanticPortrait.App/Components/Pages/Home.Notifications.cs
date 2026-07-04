@@ -20,7 +20,7 @@ public partial class Home
     private System.Timers.Timer? _reminders;
     private void StartReminders()
     {
-        _reminders ??= new System.Timers.Timer(30_000) { AutoReset = true };
+        _reminders ??= new System.Timers.Timer(Config.Background.ReminderPollMs) { AutoReset = true };
         _reminders.Elapsed -= ReminderTick;
         _reminders.Elapsed += ReminderTick;
         _reminders.Start();
@@ -56,7 +56,7 @@ public partial class Home
             // subagent falls back to the distillation). Watchdog: a wedged stream would leave
             // _drainBusy true forever and silently stop the whole retry queue.
             var raw = Database.GetMessage(pending.EntryId)?.Text ?? "";
-            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(8));
+            using var watchdog = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(Config.Timeouts.AnalystStreamMinutes));
             await Analyst.ReflectAsync(pending.EntryId, raw, pending.Payload, "",
                 onProviderError: _ => failed = true, ct: watchdog.Token);
             if (failed) { Bump(pending); return; }

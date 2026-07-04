@@ -4,21 +4,30 @@ using System.Text;
 namespace SemanticPortrait.Core;
 
 /// <summary>
-/// Thought compaction: the last <see cref="Window"/> of messages stay in flight (sent verbatim);
-/// everything older is folded into a rolling summary. Full raw detail remains in the vector DB,
-/// so the model recovers specifics via search_memory.
+/// Thought compaction: the last <c>Compaction.WindowDays</c> (see <see cref="AppConfig"/>) of
+/// messages stay in flight (sent verbatim); everything older is folded into a rolling summary.
+/// Full raw detail remains in the vector DB, so the model recovers specifics via search_memory.
 /// </summary>
 public sealed class Compactor
 {
-    public static readonly TimeSpan Window = TimeSpan.FromDays(2);
-
     private readonly Db _db;
     // Resolved per call so compaction always runs on the user-selected provider.
     private readonly ProviderRegistry _providers;
+    private readonly TimeSpan _window;
+    private readonly int _maxBatch;
 
-    public Compactor(Db db, ProviderRegistry providers) { _db = db; _providers = providers; }
+    // config is optional (defaults to AppConfig's built-in defaults) so existing call sites
+    // (tests, DI resolution before AppConfig existed) keep working unchanged.
+    public Compactor(Db db, ProviderRegistry providers, AppConfig? config = null)
+    {
+        _db = db;
+        _providers = providers;
+        var opts = (config ?? new AppConfig()).Compaction;
+        _window = TimeSpan.FromDays(opts.WindowDays);
+        _maxBatch = opts.MaxBatch;
+    }
 
-    public DateTime CutoffUtc(DateTime nowUtc) => nowUtc - Window;
+    public DateTime CutoffUtc(DateTime nowUtc) => nowUtc - _window;
     public string CurrentSummary() => _db.GetCompaction()?.Summary ?? "";
 
     public static DateTime ParseUtc(string s) =>
@@ -31,9 +40,10 @@ public sealed class Compactor
     /// folding it in one provider call would blow the context). Returns how many were folded;
     /// callers with a backlog loop until 0.
     /// </summary>
-    public async Task<int> EnsureCompactedAsync(DateTime nowUtc, int maxBatch = 80, CancellationToken ct = default)
+    public async Task<int> EnsureCompactedAsync(DateTime nowUtc, int? maxBatch = null, CancellationToken ct = default)
     {
-        var cutoff = nowUtc - Window;
+        var batch = maxBatch ?? _maxBatch;
+        var cutoff = nowUtc - _window;
         var existing = _db.GetCompaction();
         var through = existing is { } e ? ParseUtc(e.ThroughUtc) : DateTime.MinValue;
 
@@ -41,7 +51,7 @@ public sealed class Compactor
             .Where(m => m.Role is "user" or "assistant")
             .Where(m => ParseUtc(m.CreatedUtc) <= cutoff && ParseUtc(m.CreatedUtc) > through)
             .OrderBy(m => ParseUtc(m.CreatedUtc))
-            .Take(Math.Max(1, maxBatch))
+            .Take(Math.Max(1, batch))
             .ToList();
 
         if (aged.Count == 0) return 0;   // nothing newly aged out

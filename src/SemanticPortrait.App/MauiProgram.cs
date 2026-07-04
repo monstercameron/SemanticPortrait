@@ -108,7 +108,9 @@ public static class MauiProgram
 		builder.Services.AddMauiBlazorWebView();
 
 		var dataDir = FileSystem.AppDataDirectory;
-		builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(5) });
+		var cfg = AppConfig.Load(Path.Combine(dataDir, "appconfig.yaml"));
+		builder.Services.AddSingleton(cfg);
+		builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(cfg.Timeouts.HttpClientMinutes) });
 		builder.Services.AddSingleton(new Db(Path.Combine(dataDir, "semanticportrait.db")));
 		builder.Services.AddSingleton(sp => new UsageTracker(sp.GetRequiredService<Db>()));
 		builder.Services.AddSingleton<LlmConfig>();
@@ -193,7 +195,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton(sp => new SemanticPortrait.Core.Constellation.DbConstellationSource(
 			sp.GetRequiredService<Db>(), sp.GetRequiredService<LocalEmbedder>()));
 		builder.Services.AddSingleton<ExportService>();
-		builder.Services.AddSingleton<Compactor>();
+		builder.Services.AddSingleton(sp => new Compactor(sp.GetRequiredService<Db>(), sp.GetRequiredService<ProviderRegistry>(), cfg));
 		builder.Services.AddSingleton<TraceLog>();
 		builder.Services.AddSingleton<AnalystSubagent>();
 
