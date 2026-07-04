@@ -206,104 +206,104 @@
         <div class="sp-menu-scrim" @onclick="() => _showMenu = false">
             <div class="sp-menu" @onclick:stopPropagation="true">
                 <button class="sp-menu-item" @onclick="@(async () => { await ToggleConstellation(); _showMenu = false; })">
-                    <span>@(_showConstellation ? "💬" : "✦")</span> @(_showConstellation ? "Back to chat" : "Your map")
+                    <span>@(_showConstellation ? "💬" : "✦")</span> @(_showConstellation ? L["Menu.BackToChat"] : L["Menu.YourMap"])
                 </button>
 
-                <div class="sp-menu-head">Explore</div>
+                <div class="sp-menu-head">@L["Menu.SectionExplore"]</div>
                 <button class="sp-menu-item" @onclick="@(() => { OpenSearch(); _showMenu = false; })">
-                    <span>🔎</span> Search entries
+                    <span>🔎</span> @L["Menu.SearchEntries"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { OpenInsights(); _showMenu = false; })">
-                    <span>📊</span> Insights
+                    <span>📊</span> @L["Menu.Insights"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { OpenPrograms(); _showMenu = false; })">
-                    <span>🌱</span> Guided programs
+                    <span>🌱</span> @L["Menu.GuidedPrograms"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { _showTimeline = true; _showMenu = false; })">
-                    <span>🕰</span> Timeline
+                    <span>🕰</span> @L["Menu.Timeline"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { OpenLedger(); _showMenu = false; })"
-                        title="How the analyst's predictions scored against what actually happened.">
-                    <span>🎯</span> Prediction scores
+                        title="@L["Menu.PredictionScoresTooltip"]">
+                    <span>🎯</span> @L["Menu.PredictionScores"]
                 </button>
 
-                <div class="sp-menu-head">Your data</div>
+                <div class="sp-menu-head">@L["Menu.SectionYourData"]</div>
                 <button class="sp-menu-item" @onclick="@(() => { OpenExport(); _showMenu = false; })">
-                    <span>⬇</span> Export…
+                    <span>⬇</span> @L["Menu.Export"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { _backupMsg = string.Empty; _showBackup = true; _showMenu = false; })">
-                    <span>🔐</span> Backup / restore…
+                    <span>🔐</span> @L["Menu.BackupRestore"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(async () => { _showMenu = false; await PickImportFiles(); })">
-                    <span>📥</span> Import notes…
+                    <span>📥</span> @L["Menu.ImportNotes"]
                 </button>
 
-                <div class="sp-menu-head">Settings</div>
+                <div class="sp-menu-head">@L["Menu.SectionSettings"]</div>
                 <button class="sp-menu-item" @onclick="@(() => { OpenLlm(); _showMenu = false; })">
-                    <span>🧠</span> AI model…
+                    <span>🧠</span> @L["Menu.AiModel"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { _embMsg = string.Empty; _showLocalEmb = true; _showMenu = false; })">
-                    <span>📦</span> Local search index…
+                    <span>📦</span> @L["Menu.LocalSearchIndex"]
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { OpenSecurity(); _showMenu = false; })">
-                    <span>⚙</span> Security &amp; privacy…
+                    <span>⚙</span> @L["Menu.SecurityPrivacy"]
                 </button>
                 <button class="sp-menu-item" @onclick="CycleCheckin"
-                        title="A daily one-line invitation to reflect, at this hour — skipped on days you already wrote. Click to cycle.">
+                        title="@L["Menu.CheckinTooltip"]">
                     <span>🌙</span>
-                    @(CheckinHour == 0 ? "Evening check-in: off" : $"Evening check-in: {CheckinHour}:00")
+                    @(CheckinHour == 0 ? L["Menu.CheckinOff"] : L["Menu.CheckinAt", CheckinHour])
                 </button>
                 <button class="sp-menu-item" @onclick="ToggleDiscreet"
-                        title="Discreet: every Windows notification shows a generic line — nothing personal on the lock screen, ever.">
+                        title="@L["Menu.DiscreetTooltip"]">
                     <span>@(_discreet ? "🕶" : "👁")</span>
-                    @(_discreet ? "Notifications: always discreet" : "Notifications: hide content when locked")
+                    @(_discreet ? L["Menu.NotifDiscreet"] : L["Menu.NotifHideLocked"])
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { ToggleTheme(); _showMenu = false; })">
-                    <span>@(_dark ? "☀" : "☾")</span> @(_dark ? "Light mode" : "Dark mode")
+                    <span>@(_dark ? "☀" : "☾")</span> @(_dark ? L["Menu.LightMode"] : L["Menu.DarkMode"])
                 </button>
                 <button class="sp-menu-item" @onclick="ToggleMotion">
                     <span>@(_respectMotion ? "🚶" : "✨")</span>
-                    @(_respectMotion ? "Animations: respect OS" : "Animations: always on")
+                    @(_respectMotion ? L["Menu.AnimRespectOs"] : L["Menu.AnimAlwaysOn"])
                 </button>
                 <button class="sp-menu-item" @onclick="ToggleStartup">
                     <span>@(_startWithWindows ? "🚀" : "🛑")</span>
-                    @(_startWithWindows ? "Starts with Windows" : "Start with Windows: off")
+                    @(_startWithWindows ? L["Menu.StartsWithWindows"] : L["Menu.StartWithWindowsOff"])
                 </button>
                 <button class="sp-menu-item" @onclick="ToggleHideCosts">
-                    <span>@(_hideCosts ? "👁" : "🚫")</span> @(_hideCosts ? "Show AI costs" : "Hide AI costs")
+                    <span>@(_hideCosts ? "👁" : "🚫")</span> @(_hideCosts ? L["Menu.ShowAiCosts"] : L["Menu.HideAiCosts"])
                 </button>
 
                 @if (IsDevBuild)
                 {
-                    <div class="sp-menu-head">Developer</div>
-                    <button class="sp-menu-item" title="Wipe the dev sandbox and start a virgin thread (DEBUG only; never touches real data)"
+                    <div class="sp-menu-head">@L["Menu.SectionDeveloper"]</div>
+                    <button class="sp-menu-item" title="@L["Menu.ResetSandboxTooltip"]"
                             @onclick="ResetDevSandbox">
-                        <span>🧪</span> Reset sandbox
+                        <span>🧪</span> @L["Menu.ResetSandbox"]
                     </button>
                     <button class="sp-menu-item" @onclick="@(() => { _showDev = !_showDev; _showMenu = false; })">
-                        <span>🐞</span> Developer trace
+                        <span>🐞</span> @L["Menu.DeveloperTrace"]
                     </button>
                 }
 
-                <div class="sp-menu-head">Session</div>
+                <div class="sp-menu-head">@L["Menu.SectionSession"]</div>
                 @if (_updateTag is { } newTag)
                 {
                     <button class="sp-menu-item" @onclick="OpenReleases"
-                            title="Opens the GitHub releases page in your browser — nothing downloads automatically.">
-                        <span>⬆</span> Update @newTag available…
+                            title="@L["Menu.UpdateAvailableTooltip"]">
+                        <span>⬆</span> @L["Menu.UpdateAvailable", newTag]
                     </button>
                 }
                 <button class="sp-menu-item" @onclick="@(async () => { _showMenu = false; await LockNow(); })">
-                    <span>🔒</span> Lock
+                    <span>🔒</span> @L["Menu.Lock"]
                 </button>
                 <button class="sp-menu-item" @onclick="HideApp">
-                    <span>🫥</span> Hide to tray
+                    <span>🫥</span> @L["Menu.HideToTray"]
                 </button>
                 <button class="sp-menu-item" @onclick="QuitApp">
-                    <span>✖</span> Quit
+                    <span>✖</span> @L["Menu.Quit"]
                 </button>
                 <button class="sp-menu-item sp-menu-danger" @onclick="@(() => { _showReset = true; _showMenu = false; })">
-                    <span>🗑</span> Erase all data…
+                    <span>🗑</span> @L["Menu.EraseAllData"]
                 </button>
 
                 <div class="sp-menu-sep"></div>
@@ -312,7 +312,7 @@
                     <div class="sp-menu-info">@Usage.Summary()</div>
                     <div class="sp-menu-info">@Usage.MonthSummary()</div>
                 }
-                <div class="sp-menu-info" title="What actually leaves this machine right now">@EgressSummary()</div>
+                <div class="sp-menu-info" title="@L["Menu.EgressSummaryTooltip"]">@EgressSummary()</div>
             </div>
         </div>
     }
