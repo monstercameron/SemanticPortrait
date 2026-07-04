@@ -493,6 +493,12 @@ body {
 
 /* Shader-y animated aurora: drifting, blurred color blobs over a flowing conic sheen. */
 .sp-lock-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+/* Battery: constellation.js adds .sp-anim-paused to the lock screen when the window is hidden to
+   the tray or the lock has sat untouched ~45s — pausing the GPU-heavy blurred aurora/twinkle
+   repaint (and the rAF node drift) until the user returns. animation-play-state resumes in place. */
+.sp-lock.sp-anim-paused .sp-lock-bg::before,
+.sp-lock.sp-anim-paused .sp-lock-bg span,
+.sp-lock.sp-anim-paused .sp-net-dots circle { animation-play-state: paused !important; }
 .sp-lock-bg::before {
     content: ""; position: absolute; inset: -40%;
     background: conic-gradient(from 0deg at 50% 50%,

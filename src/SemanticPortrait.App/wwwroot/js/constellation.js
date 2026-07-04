@@ -16,6 +16,12 @@
     ];
 
     let raf = 0, lineEls = [], dotEls = [], nodes = [];
+    // Battery: the lock-screen aurora/net animate continuously while visible. Pause ALL of it
+    // (the rAF node drift AND the blurred CSS aurora/twinkle) when the window is hidden to the
+    // tray, or when the lock screen has sat untouched for a while (idle auto-lock + walk away).
+    // Resume the instant the user comes back (pointer/key) or the window is shown again.
+    let idleTimer = 0, watching = false, lockEl = null;
+    const IDLE_MS = 45000;
 
     function build(svg) {
         const gLines = svg.querySelector(".sp-net-lines");
@@ -64,15 +70,54 @@
         raf = requestAnimationFrame(frame);
     }
 
+    // Stop the node-drift rAF and pause the blurred CSS aurora/twinkle (animation-play-state:
+    // paused stops the GPU repaint without tearing anything down — it resumes exactly where it left off).
+    function pause() {
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        if (lockEl) lockEl.classList.add("sp-anim-paused");
+    }
+    function resume() {
+        if (document.hidden || nodes.length === 0) return;   // never wake while hidden
+        if (lockEl) lockEl.classList.remove("sp-anim-paused");
+        if (!raf) raf = requestAnimationFrame(frame);
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(pause, IDLE_MS);   // re-arm the "walked away" pause
+    }
+    function onActivity() { if (!raf) resume(); else { clearTimeout(idleTimer); idleTimer = setTimeout(pause, IDLE_MS); } }
+    function onVisibility() { if (document.hidden) pause(); else resume(); }
+
     function start() {
         const svg = document.querySelector(".sp-lock-net");
         if (!svg || raf) return;
         if (!build(svg)) return;
+        lockEl = svg.closest(".sp-lock") || document.querySelector(".sp-lock");
+        if (!watching) {
+            document.addEventListener("visibilitychange", onVisibility);
+            window.addEventListener("pointermove", onActivity, { passive: true });
+            window.addEventListener("pointerdown", onActivity, { passive: true });
+            window.addEventListener("keydown", onActivity);
+            watching = true;
+        }
+        // Always start when the lock screen appears (a genuinely-visible window must animate). If
+        // the window is actually hidden, the browser throttles this rAF to nothing anyway, and the
+        // visibilitychange handler + the idle timer below pause it explicitly — so we never risk a
+        // frozen-but-visible lock screen from a mis-reported visibility state.
         raf = requestAnimationFrame(frame);
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(pause, IDLE_MS);
     }
 
     function stop() {
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        clearTimeout(idleTimer); idleTimer = 0;
+        if (watching) {
+            document.removeEventListener("visibilitychange", onVisibility);
+            window.removeEventListener("pointermove", onActivity);
+            window.removeEventListener("pointerdown", onActivity);
+            window.removeEventListener("keydown", onActivity);
+            watching = false;
+        }
+        if (lockEl) { lockEl.classList.remove("sp-anim-paused"); lockEl = null; }
     }
 
     window.spConstellation = { start, stop };
