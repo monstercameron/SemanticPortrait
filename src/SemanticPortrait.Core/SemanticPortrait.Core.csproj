@@ -10,11 +10,17 @@
     <!-- .Core (no bundled provider) + SQLCipher bundle = encrypted DB (AES-256). -->
     <PackageReference Include="Anthropic" Version="12.34.1" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
     <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
     <PackageReference Include="PDFsharp-MigraDoc" Version="6.2.4" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- i18n catalog: flat key->English JSON consumed by JsonStringLocalizer (see Localization/). -->
+    <EmbeddedResource Include="Localization\Strings\en.json" LogicalName="SemanticPortrait.Core.Localization.Strings.en.json" />
   </ItemGroup>
 
   <ItemGroup>

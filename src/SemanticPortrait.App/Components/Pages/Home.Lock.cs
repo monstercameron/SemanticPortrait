@@ -110,7 +110,7 @@ public partial class Home
         var ok = await Hello.VerifyAsync("Set up Windows Hello for SemanticPortrait");  // real Hello prompt
         _helloBusy = false;
         if (ok) _cfgHello = true;
-        else _lockMsg = "Windows Hello didn't complete.";
+        else _lockMsg = L["Lock.HelloDidNotComplete"];
         StateHasChanged();
     }
 
@@ -121,8 +121,8 @@ public partial class Home
         // This passcode is the cryptographic floor of the whole vault. A 6-digit numeric PIN is
         // only ~20 bits — offline-brute-forceable on a stolen device even at 600k PBKDF2 iters.
         // Encourage a longer alphanumeric passphrase; require at least 6 chars.
-        if (pin.Length < 6) { _lockMsg = "Set a passcode of at least 6 characters — a longer passphrase with letters is far stronger (it's the key to your whole vault)."; return; }
-        if (pin != _cfgPin2.Trim()) { _lockMsg = "Passcodes don't match."; return; }
+        if (pin.Length < 6) { _lockMsg = L["Lock.PinTooShort"]; return; }
+        if (pin != _cfgPin2.Trim()) { _lockMsg = L["Lock.PinsDontMatch"]; return; }
 
         try
         {
@@ -141,7 +141,7 @@ public partial class Home
             _cfgPin = _cfgPin2 = "";
             _configuring = false;
         }
-        catch (Exception ex) { _lockMsg = $"Couldn't save the lock setup: {ex.Message}"; }
+        catch (Exception ex) { _lockMsg = L["Lock.SetupSaveFailed", ex.Message]; }
     }
 
     // --- security settings (change PIN, re-enroll Hello) — only while unlocked ---
@@ -156,7 +156,7 @@ public partial class Home
         {
             Vault.CreateOrAddPin(pin, _sessionKey);                // re-wrap the SAME key with the new PIN
             _newPin = _newPin2 = "";
-            _secMsg = "✓ PIN updated.";
+            _secMsg = L["Lock.PinUpdated"];
         }
         catch (Exception ex) { _secMsg = $"Couldn't save the new PIN — after a restart the previous PIN still applies. ({ex.Message})"; }
     }
@@ -196,7 +196,7 @@ public partial class Home
         var ok = await Hello.VerifyAsync("Unlock SemanticPortrait");   // real Hello prompt
         _helloBusy = false;
         var key = ok ? HelloKeys.Unseal() : null;
-        if (key is null) { _lockMsg = "Windows Hello didn't verify."; StateHasChanged(); return; }
+        if (key is null) { _lockMsg = L["Lock.HelloDidNotVerify"]; StateHasChanged(); return; }
         await FinishUnlockAsync(key);
     }
 
@@ -225,7 +225,7 @@ public partial class Home
         {
             if (showError)
             {
-                _lockMsg = $"Too many attempts — wait {(int)(_pinHoldUntil - DateTime.UtcNow).TotalSeconds + 1}s.";
+                _lockMsg = L["Lock.TooManyAttemptsWait", (int)(_pinHoldUntil - DateTime.UtcNow).TotalSeconds + 1];
                 StateHasChanged();
             }
             return;
@@ -241,9 +241,9 @@ public partial class Home
                 {
                     _pinFails = 0;
                     _pinHoldUntil = DateTime.UtcNow.AddSeconds(Config.Ui.PinHoldSeconds);
-                    _lockMsg = $"Too many wrong attempts — locked for {Config.Ui.PinHoldSeconds} seconds.";
+                    _lockMsg = L["Lock.LockedOut", Config.Ui.PinHoldSeconds];
                 }
-                else if (showError) { _lockMsg = "Wrong PIN."; _pinEntry = ""; }
+                else if (showError) { _lockMsg = L["Lock.WrongPin"]; _pinEntry = ""; }
                 StateHasChanged();
                 return;
             }

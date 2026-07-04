@@ -1,6 +1,8 @@
 @page "/"
 @using SemanticPortrait.App.Services
 @using SemanticPortrait.Core
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<SharedResource> L
 @inject AppConfig Config
 @inject IEmbedder Embedder
 @inject SemanticPortrait.Core.LocalEmbedder LocalEmb
@@ -43,49 +45,46 @@
             <div class="sp-lock-bg" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
             <div class="sp-lock-card">
                 <img class="sp-lock-logo" src="img/logo.png" alt="SemanticPortrait" />
-                <h2>Secure your portrait</h2>
-                <p class="sp-muted">Your entries are stored only on this device, encrypted. Lock them behind Windows Hello and/or a PIN. (AI replies — and, until you add local embeddings, the text sent for semantic recall — go to the provider you choose; see the masking option below.)</p>
+                <h2>@L["Lock.SetupTitle"]</h2>
+                <p class="sp-muted">@L["Lock.SetupBlurb"]</p>
 
                 @if (_helloAvailable)
                 {
                     @if (_cfgHello)
                     {
-                        <div class="sp-hello-ok">✓ Windows Hello enabled</div>
+                        <div class="sp-hello-ok">@L["Lock.HelloEnabled"]</div>
                     }
                     else
                     {
                         <button class="sp-hello-btn" @onclick="SetupHello" disabled="@_helloBusy">
                             <span class="sp-hello-glyph">⊞</span>
-                            <span>@(_helloBusy ? "Waiting for Windows Hello…" : "Set up Windows Hello")</span>
+                            <span>@(_helloBusy ? L["Lock.HelloWaiting"] : L["Lock.SetupHelloButton"])</span>
                         </button>
                     }
-                    <div class="sp-lock-divider">and set a recovery PIN</div>
+                    <div class="sp-lock-divider">@L["Lock.HelloRecoveryDivider"]</div>
                 }
                 else
                 {
-                    <p class="sp-muted">Windows Hello isn't available here — set a PIN.</p>
+                    <p class="sp-muted">@L["Lock.HelloUnavailable"]</p>
                 }
 
                 <input class="sp-lock-input" type="password" @bind="_cfgPin" @bind:event="oninput"
-                       placeholder="Passcode (min 6 — a letters+numbers passphrase is far stronger)" autocomplete="off" />
+                       placeholder="@L["Lock.PinPlaceholder"]" autocomplete="off" />
                 <input class="sp-lock-input" type="password" @bind="_cfgPin2" @bind:event="oninput"
-                       placeholder="Confirm passcode" autocomplete="off" />
+                       placeholder="@L["Lock.PinConfirmPlaceholder"]" autocomplete="off" />
                 @if (!string.IsNullOrEmpty(_lockMsg)) { <div class="sp-lock-err">@_lockMsg</div> }
 
                 <label class="sp-mask-consent">
                     <input type="checkbox" @bind="_cfgMask" />
                     <span>
-                        <strong>Mask contact details before they leave this device</strong>
-                        <small>Emails, phone numbers, and ID numbers are swapped for placeholders
-                        before text is sent to the AI. <em>Names are not masked yet</em> — and free
-                        text can still identify you, so treat this as harm-reduction, not anonymity.
-                        For full privacy, use a local model (⋯ → LLM settings). Changeable in Security.</small>
+                        <strong>@L["Lock.MaskConsentTitle"]</strong>
+                        <small>@((MarkupString)L["Lock.MaskConsentDetail"].Value)</small>
                     </span>
                 </label>
 
                 @* No "set up later": everything in this app sits behind the one central lock. *@
                 <div class="sp-lock-actions">
-                    <button class="sp-send" @onclick="SaveSetup">Enable lock</button>
+                    <button class="sp-send" @onclick="SaveSetup">@L["Lock.EnableLock"]</button>
                 </div>
             </div>
         </div>
@@ -99,15 +98,15 @@
             </div>
             <div class="sp-lock-card">
                 <img class="sp-lock-logo" src="img/logo.png" alt="SemanticPortrait" />
-                <h2>SemanticPortrait is locked</h2>
-                <p class="sp-lock-sub">Unlock your encrypted journal and memory vault.</p>
+                <h2>@L["Lock.LockedTitle"]</h2>
+                <p class="sp-lock-sub">@L["Lock.LockedSub"]</p>
                 @if (HelloKeys.Exists)
                 {
                     <button class="sp-hello-btn sp-lock-hello" @onclick="UnlockWithHello" disabled="@_helloBusy">
                         <span class="sp-hello-glyph">⊞</span>
-                        <span>@(_helloBusy ? "Waiting for Windows Hello…" : "Sign in with Windows Hello")</span>
+                        <span>@(_helloBusy ? L["Lock.HelloWaiting"] : L["Lock.HelloSignIn"])</span>
                     </button>
-                    <div class="sp-lock-divider"><span>or use your PIN</span></div>
+                    <div class="sp-lock-divider"><span>@L["Lock.HelloOrPin"]</span></div>
                 }
                 @if (Vault.HasPin)
                 {
@@ -117,9 +116,9 @@
                             <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.6"/>
                         </svg>
                         <input class="sp-lock-input" type="password" inputmode="numeric" value="@_pinEntry"
-                               @oninput="OnPinInput" @onkeydown="OnPinKey" placeholder="Enter PIN" autocomplete="off" />
+                               @oninput="OnPinInput" @onkeydown="OnPinKey" placeholder="@L["Lock.PinEnterPlaceholder"]" autocomplete="off" />
                     </div>
-                    <button class="sp-lock-unlock" @onclick="UnlockWithPin" disabled="@string.IsNullOrEmpty(_pinEntry)">Unlock</button>
+                    <button class="sp-lock-unlock" @onclick="UnlockWithPin" disabled="@string.IsNullOrEmpty(_pinEntry)">@L["Lock.Unlock"]</button>
                 }
                 @if (!string.IsNullOrEmpty(_lockMsg)) { <div class="sp-lock-err">@_lockMsg</div> }
             </div>

@@ -1,11 +1,19 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Globalization;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using SemanticPortrait.App.Services;
 using SemanticPortrait.Core;
+using SemanticPortrait.Core.Localization;
 #if WINDOWS
 using Microsoft.Maui.LifecycleEvents;
 #endif
 
 namespace SemanticPortrait.App;
+
+// Marker type for the shared i18n catalog: `@inject IStringLocalizer<SharedResource> L`.
+// There's a single flat resource file (no per-feature split), so this type carries no
+// members — it only selects which JsonStringLocalizer instance DI hands back.
+public sealed class SharedResource { }
 
 public static class MauiProgram
 {
@@ -106,6 +114,21 @@ public static class MauiProgram
 #endif
 
 		builder.Services.AddMauiBlazorWebView();
+
+		// i18n seam: IStringLocalizer<SharedResource> resolves against a JSON catalog embedded in
+		// Core (see SemanticPortrait.Core.Localization) — see JsonStringLocalizer for why JSON was
+		// chosen over .resx in this MAUI single-project. AddLocalization() wires the standard
+		// IStringLocalizer<> -> StringLocalizer<> generic; the explicit factory registration below
+		// (added after, so it wins over the TryAdd default) swaps in the JSON-backed factory.
+		builder.Services.AddLocalization();
+		builder.Services.AddSingleton<IStringLocalizerFactory>(new JsonStringLocalizerFactory());
+		// Only English resources exist today, but stamp the OS culture once at startup so the
+		// scaffolding is correct when more locales are added later.
+		if (CultureInfo.CurrentUICulture.Equals(CultureInfo.InvariantCulture))
+		{
+			CultureInfo.CurrentUICulture = CultureInfo.InstalledUICulture;
+			CultureInfo.CurrentCulture = CultureInfo.InstalledUICulture;
+		}
 
 		var dataDir = FileSystem.AppDataDirectory;
 		var cfg = AppConfig.Load(Path.Combine(dataDir, "appconfig.yaml"));
