@@ -102,6 +102,38 @@ public sealed partial class Db
         }
     }
 
+    /// <summary>"On this day": events + dated entries that fell on this calendar month+day in
+    /// a PRIOR year, most-recent first. Comparison is on the LOCAL date, since that's the day the
+    /// user lived. Cheap enough at journal scale to filter in memory.</summary>
+    public List<(int YearsAgo, string Kind, string Summary, string WhenUtc)> OnThisDay(DateTime nowLocal)
+    {
+        lock (_gate)
+        {
+            var hits = new List<(int, string, string, string)>();
+            void Consider(string kind, string summary, string utc)
+            {
+                if (!DateTime.TryParse(utc, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d)) return;
+                var local = d.ToLocalTime();
+                if (local.Month == nowLocal.Month && local.Day == nowLocal.Day && local.Year < nowLocal.Year)
+                    hits.Add((nowLocal.Year - local.Year, kind, summary, utc));
+            }
+            using (var cmd = Conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT event_utc, summary FROM events;";
+                using var r = cmd.ExecuteReader();
+                while (r.Read()) Consider("event", r.GetString(1), r.GetString(0));
+            }
+            using (var cmd = Conn.CreateCommand())
+            {
+                // dated entries: the user's own words, keyed by their contemporaneous entry time
+                cmd.CommandText = "SELECT em.entry_utc, m.text FROM entry_meta em JOIN messages m ON m.id=em.message_id;";
+                using var r = cmd.ExecuteReader();
+                while (r.Read()) Consider("entry", r.GetString(1), r.GetString(0));
+            }
+            return hits.OrderByDescending(h => h.Item4).ToList();
+        }
+    }
+
     // --- predictions (calibration) -------------------------------------------
     public long AddPrediction(string claim, string criterion, string? dueUtc)
     {

@@ -185,6 +185,21 @@ public partial class Home
                 .ToList();
 
             Database.SetSetting("digest_day", today);   // one shot per day, hit or miss
+
+            // "On this day": a memory from this date in a prior year — the continuity payoff of a
+            // journal you keep for a lifetime. Folded into the same once-a-day digest moment.
+            var onThisDay = Database.OnThisDay(DateTime.Now);
+            if (onThisDay.Count > 0)
+            {
+                var top = onThisDay[0];
+                var yearWord = top.YearsAgo == 1 ? "a year ago today" : $"{top.YearsAgo} years ago today";
+                _ = FireProactive(
+                    $"[On this day — {yearWord} ({top.Kind}): \"{top.Summary}\". Resurface this in ONE " +
+                    "warm line as a moment of continuity — 'a year ago today, you…'. No analysis unless " +
+                    "they pick it up; just offer the memory. No preamble.]")
+                    .Guard("on-this-day");
+                if (items.Count == 0) return;   // the memory was the whole digest
+            }
             if (items.Count == 0) return;
             _ = FireProactive(
                 $"[Session-open digest — on the user's plate today ({items.Count} item(s)): " +
