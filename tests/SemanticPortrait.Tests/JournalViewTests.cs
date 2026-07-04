@@ -34,7 +34,9 @@ public class JournalViewTests : IDisposable
     [Fact]
     public void Writing_stats_count_entries_words_and_distinct_days()
     {
-        var t = DateTime.UtcNow;
+        // Anchor to LOCAL noon: WritingStats buckets by local day, so a UTC "now" near local
+        // midnight would push the +1h entry into the next local day and make "days" flaky.
+        var t = DateTime.Today.AddHours(12).ToUniversalTime();
         _db.AddMessage("user", "one two three", t.ToString("o"));
         _db.AddMessage("user", "four five", t.AddHours(1).ToString("o"));       // same day
         _db.AddMessage("user", "six", t.AddDays(-2).ToString("o"));            // another day

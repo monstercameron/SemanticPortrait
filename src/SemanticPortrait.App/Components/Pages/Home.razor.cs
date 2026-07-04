@@ -362,7 +362,16 @@ public partial class Home
             try { await JS.InvokeVoidAsync("spCaptureScroll", _messagesEl); } catch { }
         _showConstellation = !_showConstellation;
         if (!_showConstellation) _restoreChatScroll = true;
+        // First time the map is ever opened: pin the "how to read" key open so a newcomer sees
+        // it without discovering the hover chip. Persisted, so it only ever auto-shows once.
+        else if (!Microsoft.Maui.Storage.Preferences.Default.Get("map_legend_seen", false))
+        {
+            _peekLegend = true;
+            Microsoft.Maui.Storage.Preferences.Default.Set("map_legend_seen", true);
+        }
     }
+
+    private bool _peekLegend;
 
     /// <summary>Which data world this session runs in — shown in the WINDOW TITLE and the header
     /// so it's never ambiguous where writes are going. Null in Release (plain title).</summary>

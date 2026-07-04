@@ -255,7 +255,8 @@
 
     <!-- legend (mock bottom-right) -->
     @* a key DRAWS its strokes; collapsed to a chip so it can never collide with the sky *@
-    <div class="clegend">
+    <div class="clegend @(PeekLegend && !_legendDismissed ? "clegend-peek" : "")"
+         @onclick="() => _legendDismissed = true" @onclick:stopPropagation="true">
         <div class="clegend-title">?&nbsp; HOW TO READ</div>
         <div class="clegend-body">
         <div><span class="ck">SHAPE</span>
@@ -299,14 +300,19 @@
     {
         @* the living-system HUD (design 3): discrete stat CARDS — icon ring + value + word *@
         <div class="chud">
-            @StatCard("✦", $"{m3.Nodes.Count(n => n.Id > 0)}", "stars", m3.LinkedFraction, $"{F0(m3.LinkedFraction * 100)}% linked", "#19d3ff")
+            @StatCard("✦", $"{m3.Nodes.Count(n => n.Id > 0)}", "stars", m3.LinkedFraction, $"{F0(m3.LinkedFraction * 100)}% linked", "#19d3ff",
+                      "Each star is one theme or person the map tracks. \"Linked\" = connected to at least one other star.")
             @if (Stats is { } sg)
             {
-                @StatCard("◌", Word3(sg.Density, "sparse", "growing", "woven"), "connection", sg.Density, "density", "#00e88f")
-                @StatCard("◎", Word3(sg.ContradictionLoad, "low", "moderate", "high"), "contradiction", sg.ContradictionLoad, "load", "#ff2e6e")
-                @StatCard("✧", CertaintyWord(m3), "certainty", CertaintyVal(m3), "confidence", "#7c6bff")
+                @StatCard("◌", Word3(sg.Density, "sparse", "growing", "woven"), "connections", null, "", "#00e88f",
+                          "How linked your themes are — sparse (few ties), growing, or woven together.")
+                @StatCard("◎", Word3(sg.ContradictionLoad, "low", "moderate", "high"), "tension", null, "", "#ff2e6e",
+                          "How much of what you've written pulls in opposite directions.")
+                @StatCard("✧", CertaintyWord(m3), "confidence", null, "", "#7c6bff",
+                          "How settled the analyst is about these themes overall.")
             }
-            @if (MemorySpan is { } msp) { @StatCard("⧗", msp, "memory", null, "span", "#ff8a3d") }
+            @if (MemorySpan is { } msp) { @StatCard("⧗", msp, "time span", null, "", "#ff8a3d",
+                      "The span of time your entries and remembered life-events cover.") }
         </div>
     }
 
@@ -403,6 +409,10 @@
     [Parameter] public string? MemorySpan { get; set; }
     /// <summary>Host-supplied storyteller (RecallEngine.NarrateNodeAsync) — the view stays DB-free.</summary>
     [Parameter] public Func<long, Task<string>>? Narrate { get; set; }
+    /// <summary>Host pins the "how to read" key open the first time the map is ever opened, so a
+    /// newcomer sees the shape/thread/light key without having to discover the hover chip.</summary>
+    [Parameter] public bool PeekLegend { get; set; }
+    private bool _legendDismissed;
 
     private VisualNode? Sel;
     private string? _story;
@@ -768,9 +778,9 @@
 
     /// <summary>One vital-sign card: icon inside a progress ring (when a 0..1 value exists),
     /// big value, whisper caption — the mocks' HUD pattern.</summary>
-    private static RenderFragment StatCard(string icon, string value, string caption, double? frac, string sub, string tint) => __builder =>
+    private static RenderFragment StatCard(string icon, string value, string caption, double? frac, string sub, string tint, string? title = null) => __builder =>
     {
-        <div class="chud-card">
+        <div class="chud-card" title="@title">
             <svg class="chud-ring" viewBox="0 0 30 30">
                 <circle cx="15" cy="15" r="12" class="chud-ring-bg" />
                 @if (frac is { } fr)
@@ -780,7 +790,7 @@
                 }
                 <text x="15" y="19.5" text-anchor="middle" class="chud-ring-ico" style="fill:@tint">@icon</text>
             </svg>
-            <div class="chud-txt"><b>@value</b><span>@caption · @sub</span></div>
+            <div class="chud-txt"><b>@value</b><span>@(string.IsNullOrEmpty(sub) ? caption : $"{caption} · {sub}")</span></div>
         </div>
     };
 

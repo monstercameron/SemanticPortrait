@@ -160,6 +160,9 @@
 .clegend-body { display: none; flex-direction: column; gap: 3px; }
 .clegend:hover { background: rgba(12,12,20,.94); }
 .clegend:hover .clegend-body { display: flex; }
+/* pinned open on first-ever map view so a newcomer sees the key (click to dismiss) */
+.clegend-peek { background: rgba(12,12,20,.94); outline: 1px solid rgba(255,255,255,.14); }
+.clegend-peek .clegend-body { display: flex; }
 .clegend .ck { color: rgba(255,255,255,.34); letter-spacing: .1em; margin-right: 6px; }
 
 /* ---- generative fingerprint (design §M5) ---------------------------------------------- */

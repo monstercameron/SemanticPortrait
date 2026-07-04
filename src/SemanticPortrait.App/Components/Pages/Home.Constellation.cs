@@ -47,7 +47,6 @@ public partial class Home
     /// <summary>Rebuild both renderings from the source (async: the live source runs semantic
     /// join + mood classification through the embedder). Fire-and-forget callers use LoadGraph().</summary>
     private string? _memorySpan;   // "14 months" — HUD vital sign
-    private int _memoryCount;      // header: how many memories feed the map
 
     private async Task BuildConstellationAsync()
     {
@@ -62,7 +61,6 @@ public partial class Home
             if (Database.IsOpen)
             {
                 var meta = Database.GetAllEntryMeta();
-                _memoryCount = meta.Count;
                 var dated = meta.Select(m => Compactor.ParseUtc(m.EntryUtc))
                     .Where(d => d != DateTime.MinValue).ToList();
                 if (dated.Count >= 2)
@@ -146,7 +144,7 @@ public partial class Home
     /// main agent (which has recall/portrait tools) picks the thread up with full context.</summary>
     private void AskAboutNode(SemanticPortrait.Core.Constellation.VisualNode n)
     {
-        _draft = $"About “{n.Label}” on my constellation (node #{n.Id}): ";
+        _draft = $"About “{n.Label}” on my map: ";
         _showConstellation = false;
         _restoreChatScroll = true;
         _focusNext = true;

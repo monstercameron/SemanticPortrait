@@ -281,8 +281,10 @@ body {
     margin: 8px 0 14px; cursor: pointer;
 }
 .sp-mask-consent input[type=checkbox] { margin-top: 3px; width: 16px; height: 16px; flex: none; }
-.sp-mask-consent strong { display: block; font-size: 13px; color: var(--text); }
+.sp-mask-consent > span > strong { display: block; font-size: 13px; color: var(--text); }
 .sp-mask-consent small { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+/* the inline "not" emphasis inside the small print must stay inline, just brighter */
+.sp-mask-consent small strong { display: inline; font-size: inherit; color: var(--text); }
 
 /* notifications: bell + badge + drawer */
 .sp-bell { position: relative; }
@@ -872,6 +874,13 @@ body {
     display: flex; align-items: center; justify-content: center;
 }
 .sp-send-circle:disabled { opacity: .35; cursor: default; }
+/* primary action button used across modals (Update PIN, Import, Export, Set, Start, Rebuild…) */
+.sp-send {
+    padding: 9px 16px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font: inherit; font-weight: 600; line-height: 1.2;
+}
+.sp-send:hover { filter: brightness(1.08); }
+.sp-send:disabled { opacity: .4; cursor: default; filter: none; }
 
 /* constellation */
 .sp-constellation { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
