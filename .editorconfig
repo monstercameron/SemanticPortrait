@@ -1,0 +1,32 @@
+# SemanticPortrait — editorconfig. Codifies the conventions the codebase already follows
+# (see CLAUDE.md). Style preferences are left at suggestion level so they guide the IDE
+# without failing the build under TreatWarningsAsErrors (Directory.Build.props).
+
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.cs]
+indent_size = 4
+
+# Modern C# conventions already in use across the codebase (kept as suggestions).
+csharp_style_namespace_declarations = file_scoped:suggestion
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+dotnet_style_object_initializer = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+[*.{razor,cshtml}]
+indent_size = 4
+
+[*.{json,yml,yaml,csproj,props,targets}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

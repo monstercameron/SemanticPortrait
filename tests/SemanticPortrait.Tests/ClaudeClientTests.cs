@@ -53,7 +53,7 @@ public class ClaudeClientTests
     }
 
     [Fact]
-    public void Provider_reports_missing_key_via_onError()
+    public async Task Provider_reports_missing_key_via_onError()
     {
         // No key configured → the stream must surface the problem through BOTH channels
         // (bracketed text for the chat, onError for persisting callers).
@@ -71,7 +71,7 @@ public class ClaudeClientTests
                     new[] { new ChatMessage("user", "hi") }, onError: e => err = e))
                     text += t;
             });
-            Assert.True(task.Wait(TimeSpan.FromSeconds(10)));
+            await task.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.Contains("no Anthropic API key", text);
             Assert.Equal(text, err);
         }

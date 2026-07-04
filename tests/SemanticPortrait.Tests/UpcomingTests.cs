@@ -133,11 +133,11 @@ public class UpcomingTests : IDisposable
     }
 
     [Fact]
-    public void Tool_is_wired_and_executes()
+    public async Task Tool_is_wired_and_executes()
     {
         Assert.True(_tools.Handles("upcoming"));
         _db.AddReminder(Iso(DateTime.UtcNow.AddHours(1)), "wired check");
-        var result = _tools.ExecuteAsync("upcoming", "{}").Result;
+        var result = await _tools.ExecuteAsync("upcoming", "{}");
         Assert.Contains("wired check", result);
     }
 

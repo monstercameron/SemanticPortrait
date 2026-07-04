@@ -41,12 +41,12 @@ public class SidecarVoiceTests
     }
 
     [Fact]
-    public void Unavailable_sidecar_reports_unavailable_and_never_throws()
+    public async Task Unavailable_sidecar_reports_unavailable_and_never_throws()
     {
         var v = new SidecarVoice(@"C:\does\not\exist\python.exe", @"C:\does\not\exist");
         Assert.False(v.Available);
-        Assert.Null(v.TranscribeAsync("x.wav").Result);
-        Assert.Null(v.SpeakAsync("hi", "out.wav").Result);
+        Assert.Null(await v.TranscribeAsync("x.wav"));
+        Assert.Null(await v.SpeakAsync("hi", "out.wav"));
     }
 
     [Fact]

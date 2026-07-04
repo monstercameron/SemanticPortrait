@@ -50,11 +50,11 @@ public class EntityRegistryTests : IDisposable
     }
 
     [Fact]
-    public void Alias_tool_roundtrip_via_graph_tools()
+    public async Task Alias_tool_roundtrip_via_graph_tools()
     {
         var tools = new GraphTools(_db, new FakeEmbedder());
-        var res = tools.ExecuteAsync("register_alias",
-            JsonSerializer.Serialize(new { canonical = "Alice", mention = "Ali", kind = "person" })).Result;
+        var res = await tools.ExecuteAsync("register_alias",
+            JsonSerializer.Serialize(new { canonical = "Alice", mention = "Ali", kind = "person" }));
         Assert.Contains("resolves to 'Alice'", res);
         Assert.Equal("Alice", _db.ResolveCanonical("ali"));
         var e = Assert.Single(_db.GetEntities());
