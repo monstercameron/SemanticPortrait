@@ -1061,10 +1061,10 @@
 
                 @* floating chrome: the canvas is the page; the essentials hover over it *@
                 <div class="sp-const-float sp-cf-left">
-                    <button class="sp-cf-chat" title="Back to chat" @onclick="ToggleConstellation">💬 chat</button>
+                    <button class="sp-cf-chat" title="@L["Map.BackTooltip"]" @onclick="ToggleConstellation">💬 @L["Map.BackLabel"]</button>
                     <div class="sp-cf-title">
-                        <b>Your map</b>
-                        <span>a living map of you — each star is one thing it knows</span>
+                        <b>@L["Map.Title"]</b>
+                        <span>@L["Map.Subtitle"]</span>
                     </div>
                     @if (_devModeLabel is { } devMode2)
                     {
@@ -1072,25 +1072,25 @@
                     }
                 </div>
                 <div class="sp-const-float sp-cf-right">
-                    <button class="sp-cf-btn" title="Lock" @onclick="LockNow">🔒</button>
-                    <button class="sp-cf-btn" title="Recompute the map from all your entries and facts — refines it, keeps all your data (nothing is deleted)."
+                    <button class="sp-cf-btn" title="@L["Map.LockTooltip"]" @onclick="LockNow">🔒</button>
+                    <button class="sp-cf-btn" title="@L["Map.RebuildTooltip"]"
                             disabled="@(_rebuildState == RState.Running)" @onclick="() => _showRebuildConfirm = true">
-                        @(_rebuildState == RState.Running ? "✦ blooming…" : "⟳ rebuild")
+                        @(_rebuildState == RState.Running ? $"✦ {L["Map.Blooming"]}" : $"⟳ {L["Map.RebuildLabel"]}")
                     </button>
-                    <button class="sp-cf-btn" title="Switch between demo data (a preview of how the map looks) and your own real data" @onclick="ToggleConstSample">
-                        @(_constSample ? "◐ demo data" : "◑ your data")
+                    <button class="sp-cf-btn" title="@L["Map.DemoToggleTooltip"]" @onclick="ToggleConstSample">
+                        @(_constSample ? $"◐ {L["Map.DemoData"]}" : $"◑ {L["Map.YourData"]}")
                     </button>
-                    <button class="sp-cf-btn" title="Switch between your private map (real names shown) and a shareable artwork with names removed (aggregates only). Handy if someone's looking over your shoulder."
+                    <button class="sp-cf-btn" title="@L["Map.PrivacyToggleTooltip"]"
                             @onclick="ToggleSigilMode">
-                        @(_sigilMode ? "🎭 shareable" : "👁 private")
+                        @(_sigilMode ? $"🎭 {L["Map.Shareable"]}" : $"👁 {L["Map.Private"]}")
                     </button>
-                    <button class="sp-cf-btn" title="Rewind through time to see the map as it was on an earlier date"
-                            @onclick="ToggleScrub">⏳ @(_scrubActive ? ScrubLabel : "rewind")</button>
+                    <button class="sp-cf-btn" title="@L["Map.RewindTooltip"]"
+                            @onclick="ToggleScrub">⏳ @(_scrubActive ? ScrubLabel : L["Map.Rewind"].Value)</button>
                     @if (_sigilMode)
                     {
-                        <button class="sp-cf-btn" title="Show the masked artwork full-screen and living" @onclick="ToggleAmbient">◱ full-screen</button>
+                        <button class="sp-cf-btn" title="@L["Map.FullscreenTooltip"]" @onclick="ToggleAmbient">◱ @L["Map.Fullscreen"]</button>
                     }
-                    <button class="sp-cf-btn" title="Menu" @onclick="() => _showMenu = !_showMenu">⋯</button>
+                    <button class="sp-cf-btn" title="@L["Map.MenuTooltip"]" @onclick="() => _showMenu = !_showMenu">⋯</button>
                 </div>
 
                 @if (_scrubActive)
@@ -1109,32 +1109,31 @@
                             @if (_rebuildState == RState.Running)
                             {
                                 <div class="sp-ro-orb"></div>
-                                <div class="sp-ro-title">✦ Rebuilding your map…</div>
+                                <div class="sp-ro-title">✦ @L["Map.RebuildingTitle"]</div>
                                 <div class="sp-ro-status">@_rebuildStatus</div>
-                                <div class="sp-ro-meter">@_rebuildCount updates · $@RebuildCost.ToString("0.000") · @RebuildTokens.ToString("N0") tokens</div>
+                                <div class="sp-ro-meter">@L["Map.RebuildMeter", _rebuildCount, RebuildCost.ToString("0.000"), RebuildTokens.ToString("N0")]</div>
                                 <div class="sp-ro-actions">
-                                    <button class="sp-btn-ghost" @onclick="CancelRebuild">Cancel</button>
+                                    <button class="sp-btn-ghost" @onclick="CancelRebuild">@L["Common.Cancel"]</button>
                                 </div>
                             }
                             else if (_rebuildState == RState.Empty)
                             {
-                                <div class="sp-ro-title">Nothing to map yet</div>
-                                <div class="sp-ro-status">Your map grows from what you write. Spend a week
-                                    journaling with the app, then rebuild to watch it bloom. (Or preview the design now.)</div>
+                                <div class="sp-ro-title">@L["Map.EmptyTitle"]</div>
+                                <div class="sp-ro-status">@L["Map.EmptyBody"]</div>
                                 <div class="sp-ro-actions">
-                                    <button class="sp-btn-ghost" @onclick="@(() => { _rebuildState = RState.Idle; if (!_constSample) ToggleConstSample(); })">Preview sample</button>
-                                    <button class="sp-send" @onclick="() => _rebuildState = RState.Idle">Got it</button>
+                                    <button class="sp-btn-ghost" @onclick="@(() => { _rebuildState = RState.Idle; if (!_constSample) ToggleConstSample(); })">@L["Map.PreviewSample"]</button>
+                                    <button class="sp-send" @onclick="() => _rebuildState = RState.Idle">@L["Map.GotIt"]</button>
                                 </div>
                             }
                             else  @* Cancelled *@
                             {
-                                <div class="sp-ro-title">Paused</div>
+                                <div class="sp-ro-title">@L["Map.PausedTitle"]</div>
                                 <div class="sp-ro-status">@_rebuildStatus</div>
-                                <div class="sp-ro-meter">@_rebuildCount updates · $@RebuildCost.ToString("0.000") · @RebuildTokens.ToString("N0") tokens</div>
+                                <div class="sp-ro-meter">@L["Map.RebuildMeter", _rebuildCount, RebuildCost.ToString("0.000"), RebuildTokens.ToString("N0")]</div>
                                 <div class="sp-ro-actions">
-                                    <button class="sp-btn-ghost" @onclick="() => _rebuildState = RState.Idle">Done</button>
-                                    <button class="sp-btn-ghost" @onclick="() => RunRebuild(restart: true)">Restart</button>
-                                    <button class="sp-send" @onclick="() => RunRebuild(restart: false)">Continue</button>
+                                    <button class="sp-btn-ghost" @onclick="() => _rebuildState = RState.Idle">@L["Common.Done"]</button>
+                                    <button class="sp-btn-ghost" @onclick="() => RunRebuild(restart: true)">@L["Map.Restart"]</button>
+                                    <button class="sp-send" @onclick="() => RunRebuild(restart: false)">@L["Map.Continue"]</button>
                                 </div>
                             }
                         </div>
@@ -1184,9 +1183,9 @@
             <SemanticPortrait.App.Components.Constellation.SigilView P="_sigil" />
             @* stopPropagation: the click would bubble to the overlay's own exit handler and
                toggle ambient TWICE — a one-click no-op that reads as a dead button *@
-            <button class="sp-ambient-exit" title="Exit ambient"
-                    @onclick="ToggleAmbient" @onclick:stopPropagation="true">✕ exit</button>
-            <div class="sp-ambient-hint">click anywhere to exit</div>
+            <button class="sp-ambient-exit" title="@L["Map.ExitAmbientTooltip"]"
+                    @onclick="ToggleAmbient" @onclick:stopPropagation="true">✕ @L["Map.ExitLabel"]</button>
+            <div class="sp-ambient-hint">@L["Map.ClickAnywhereToExit"]</div>
         </div>
     }
 
@@ -1194,13 +1193,11 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showRebuildConfirm = false">
             <div class="sp-modal" @onclick:stopPropagation="true">
-                <h3 style="color:var(--accent)">Rebuild your map?</h3>
-                <p>A clean-room analyst will re-read your notes, events and entries and regenerate the
-                   map from scratch — you'll watch it bloom in. Existing nodes are refined, not wiped.
-                   This re-runs analysis (uses tokens).</p>
+                <h3 style="color:var(--accent)">@L["Map.ConfirmTitle"]</h3>
+                <p>@L["Map.ConfirmBody"]</p>
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showRebuildConfirm = false">Cancel</button>
-                    <button class="sp-send" @onclick="() => RunRebuild(restart: false)">✦ Rebuild</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showRebuildConfirm = false">@L["Common.Cancel"]</button>
+                    <button class="sp-send" @onclick="() => RunRebuild(restart: false)">✦ @L["Map.ConfirmRebuildButton"]</button>
                 </div>
             </div>
         </div>

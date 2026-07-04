@@ -66,9 +66,9 @@ public partial class Home
                 if (dated.Count >= 2)
                 {
                     var months = (dated.Max() - dated.Min()).TotalDays / 30.44;
-                    _memorySpan = months < 1.5 ? "weeks"
-                        : months < 24 ? $"{months:0} months"
-                        : $"{months / 12:0} years";   // an imported life reads in years, not "336 months"
+                    _memorySpan = months < 1.5 ? L["Map.SpanWeeks"].Value
+                        : months < 24 ? L["Map.SpanMonths", $"{months:0}"].Value
+                        : L["Map.SpanYears", $"{months / 12:0}"].Value;   // an imported life reads in years, not "336 months"
                 }
                 else _memorySpan = null;
             }
@@ -94,7 +94,7 @@ public partial class Home
     private bool _scrubBuilding;
     private double? _scrubQueued;            // latest requested position while a build runs
 
-    private string ScrubLabel => _scrubAsOf is { } t ? t.ToLocalTime().ToString("MMM d, yyyy") : "now";
+    private string ScrubLabel => _scrubAsOf is { } t ? t.ToLocalTime().ToString("MMM d, yyyy") : L["Map.Now"].Value;
 
     private void ToggleScrub()
     {
@@ -196,7 +196,7 @@ public partial class Home
         _rebuildCts = new System.Threading.CancellationTokenSource();
         _rebuildState = RState.Running;
         _rebuildCount = 0;
-        _rebuildStatus = "reading everything you've shared…";
+        _rebuildStatus = L["Map.StatusReading"].Value;
         _rebuildStartCost = Usage.CostUsd;
         _rebuildStartTokens = Usage.Total;
         await InvokeAsync(StateHasChanged);
@@ -211,8 +211,8 @@ public partial class Home
             }, ct: _rebuildCts.Token);
             _rebuildState = RState.Idle;        // finished cleanly → overlay closes
         }
-        catch (OperationCanceledException) { _rebuildState = RState.Cancelled; _rebuildStatus = "paused — pick up where you left off or restart"; }
-        catch (Exception ex) { _rebuildState = RState.Cancelled; _rebuildStatus = "hit a snag: " + (ex.Message.Length > 80 ? ex.Message[..80] + "…" : ex.Message); }
+        catch (OperationCanceledException) { _rebuildState = RState.Cancelled; _rebuildStatus = L["Map.StatusPaused"].Value; }
+        catch (Exception ex) { _rebuildState = RState.Cancelled; _rebuildStatus = L["Map.StatusSnag", ex.Message.Length > 80 ? ex.Message[..80] + "…" : ex.Message].Value; }
         finally { LoadGraph(); await InvokeAsync(StateHasChanged); }
     }
 
@@ -239,12 +239,12 @@ public partial class Home
         LoadGraph();
     }
 
-    private static string ToolBloomLine(string tool) => tool switch
+    private string ToolBloomLine(string tool) => tool switch
     {
-        "upsert_node" => "✦ a new star appears…",
-        "link_nodes" => "✦ threads connecting…",
-        "save_note" or "refine_note" => "📝 distilling an insight…",
-        "log_event" => "📅 placing a moment in time…",
-        _ => "✦ mapping you…",
+        "upsert_node" => $"✦ {L["Map.StatusNewStar"]}",
+        "link_nodes" => $"✦ {L["Map.StatusThreads"]}",
+        "save_note" or "refine_note" => $"📝 {L["Map.StatusDistilling"]}",
+        "log_event" => $"📅 {L["Map.StatusPlacing"]}",
+        _ => $"✦ {L["Map.StatusMapping"]}",
     };
 }

@@ -1,5 +1,7 @@
 @using SemanticPortrait.Core.Constellation
+@using Microsoft.Extensions.Localization
 @implements IDisposable
+@inject IStringLocalizer<SharedResource> L
 
 @*
     Constellation v2 renderer — a PURE VIEW over a VisualModel (design/constellation.md). It knows
@@ -24,10 +26,10 @@
              semantic midlines (hardcoded square-world coords sat off-center in a wide panel) -->
         <line x1="@F(_spanX / 2)" y1="60" x2="@F(_spanX / 2)" y2="940" class="caxis" />
         <line x1="60" y1="500" x2="@F(_spanX - 60)" y2="500" class="caxis" />
-        <text x="@F(_spanX / 2)" y="48" class="caxis-lbl" text-anchor="middle">HIGH ENERGY</text>
-        <text x="@F(_spanX / 2)" y="866" class="caxis-lbl" text-anchor="middle">LOW ENERGY</text>
-        <text x="70" y="446" class="caxis-lbl" text-anchor="start">NEGATIVE VALENCE</text>
-        <text x="@F(_spanX - 70)" y="446" class="caxis-lbl" text-anchor="end">POSITIVE VALENCE</text>
+        <text x="@F(_spanX / 2)" y="48" class="caxis-lbl" text-anchor="middle">@L["MapLegend.AxisHighEnergy"]</text>
+        <text x="@F(_spanX / 2)" y="866" class="caxis-lbl" text-anchor="middle">@L["MapLegend.AxisLowEnergy"]</text>
+        <text x="70" y="446" class="caxis-lbl" text-anchor="start">@L["MapLegend.AxisNegativeValence"]</text>
+        <text x="@F(_spanX - 70)" y="446" class="caxis-lbl" text-anchor="end">@L["MapLegend.AxisPositiveValence"]</text>
         @* orbit guides: the radial layout made visible — inner ring = closest to the self *@
         @foreach (var f in new[] { 0.315, 0.63, 0.94 })
         {
@@ -35,11 +37,11 @@
                      rx="@F(0.47 * f * (_spanX - 2 * Pad))" ry="@F(0.41 * f * (Span - 2 * Pad))" />
         }
         @* gestalt weather names — the far-zoom reading of the four affect skies + the unread rim *@
-        <text class="cquad" x="@F(_spanX * 0.76)" y="150" text-anchor="middle">DRIVE &amp; FLOW</text>
-        <text class="cquad" x="@F(_spanX * 0.24)" y="150" text-anchor="middle">ALARM &amp; FRICTION</text>
-        <text class="cquad" x="@F(_spanX * 0.24)" y="862" text-anchor="middle">WOUNDS &amp; WEIGHT</text>
-        <text class="cquad" x="@F(_spanX * 0.76)" y="862" text-anchor="middle">REST &amp; GROUND</text>
-        <text class="cquad crim" x="@F(_spanX * 0.66)" y="901" text-anchor="middle">· THE UNREAD ·</text>
+        <text class="cquad" x="@F(_spanX * 0.76)" y="150" text-anchor="middle">@L["MapLegend.QuadDriveFlow"]</text>
+        <text class="cquad" x="@F(_spanX * 0.24)" y="150" text-anchor="middle">@L["MapLegend.QuadAlarmFriction"]</text>
+        <text class="cquad" x="@F(_spanX * 0.24)" y="862" text-anchor="middle">@L["MapLegend.QuadWoundsWeight"]</text>
+        <text class="cquad" x="@F(_spanX * 0.76)" y="862" text-anchor="middle">@L["MapLegend.QuadRestGround"]</text>
+        <text class="cquad crim" x="@F(_spanX * 0.66)" y="901" text-anchor="middle">@L["MapLegend.UnreadRim"]</text>
 
         @* ambient nebula washes — quieter than the per-group fog so cluster tints read as PLACES *@
         <ellipse class="cwash" cx="@F(_spanX * 0.72)" cy="300" rx="@F(_spanX * 0.34)" ry="330"
@@ -246,10 +248,10 @@
 
     <!-- zoom controls -->
     <div class="czoom">
-        <button title="Zoom in" @onclick="() => Zoom(1 / 1.3)">＋</button>
-        <button title="Zoom out" @onclick="() => Zoom(1.3)">－</button>
-        <button title="Reset view" @onclick="ResetView">⌂</button>
-        <button title="Export PNG" disabled="@_exporting" @onclick="ExportPng">@(_exporting ? "…" : "⬇")</button>
+        <button title="@L["MapLegend.ZoomIn"]" @onclick="() => Zoom(1 / 1.3)">＋</button>
+        <button title="@L["MapLegend.ZoomOut"]" @onclick="() => Zoom(1.3)">－</button>
+        <button title="@L["MapLegend.ResetView"]" @onclick="ResetView">⌂</button>
+        <button title="@L["MapLegend.ExportPng"]" disabled="@_exporting" @onclick="ExportPng">@(_exporting ? "…" : "⬇")</button>
         @if (_exportNote is { } enote) { <span class="cexport-note">@enote</span> }
     </div>
 
@@ -257,19 +259,19 @@
     @* a key DRAWS its strokes; collapsed to a chip so it can never collide with the sky *@
     <div class="clegend @(PeekLegend && !_legendDismissed ? "clegend-peek" : "")"
          @onclick="() => _legendDismissed = true" @onclick:stopPropagation="true">
-        <div class="clegend-title">?&nbsp; HOW TO READ</div>
+        <div class="clegend-title">?&nbsp; @L["MapLegend.HowToReadTitle"]</div>
         <div class="clegend-body">
-        <div><span class="ck">REGIONS</span> named clusters are themes it groups you into · position ≈ energy (↕) × mood (↔)</div>
-        <div><span class="ck">SHAPE</span>
+        <div><span class="ck">@L["MapLegend.RegionsLabel"]</span> @L["MapLegend.RegionsDesc"]</div>
+        <div><span class="ck">@L["MapLegend.ShapeLabel"]</span>
             <svg class="ckex" viewBox="0 0 88 14"><polygon points="7,2 12,12 2,12" fill="none" stroke="#9a9aa3" stroke-width="1.4"/><polygon points="26,2 31,7 26,12 21,7" fill="none" stroke="#9a9aa3" stroke-width="1.4"/><polygon points="45,2 51,6.4 48.7,12 41.3,12 39,6.4" fill="none" stroke="#9a9aa3" stroke-width="1.4"/><polygon points="59.5,7 62,2.7 67,2.7 69.5,7 67,11.3 62,11.3" fill="none" stroke="#9a9aa3" stroke-width="1.4"/><circle cx="83" cy="7" r="5.2" fill="none" stroke="#9a9aa3" stroke-width="1.4"/></svg>
-            more sides = more complex · circle = resolved</div>
-        <div><span class="ck">STATED</span>
+            @L["MapLegend.ShapeDesc"]</div>
+        <div><span class="ck">@L["MapLegend.StatedLabel"]</span>
             <svg class="ckex" viewBox="0 0 88 14"><line x1="2" y1="7" x2="38" y2="7" stroke="#9a9aa3" stroke-width="1.6"/><line x1="48" y1="7" x2="86" y2="7" stroke="#9a9aa3" stroke-width="1.4" stroke-dasharray="4 3"/></svg>
-            vs inferred (stars &amp; threads)</div>
-        <div><span class="ck">THREADS</span>
+            @L["MapLegend.StatedDesc"]</div>
+        <div><span class="ck">@L["MapLegend.ThreadsLabel"]</span>
             <svg class="ckex" viewBox="0 0 88 14"><line x1="2" y1="7" x2="30" y2="7" stroke="#9a9aa3" stroke-width="2.6"/><path d="M38 7 q5 -6 10 0 q5 6 10 0 q5 -6 10 0" fill="none" stroke="#9a9aa3" stroke-width="1.3"/></svg>
-            thick = sure · wavy = uncertain</div>
-        <div><span class="ck">LIGHT</span> pulse = alive now · glow = creative fire</div>
+            @L["MapLegend.ThreadsDesc"]</div>
+        <div><span class="ck">@L["MapLegend.LightLabel"]</span> @L["MapLegend.LightDesc"]</div>
         </div>
     </div>
 
@@ -278,7 +280,7 @@
     @if (Model?.Fp is { } cfp)
     {
         <div class="cfp">
-            <div class="clegend-title">◈&nbsp; FINGERPRINT</div>
+            <div class="clegend-title">◈&nbsp; @L["MapLegend.FingerprintTitle"]</div>
             <div class="cfp-body">
                 @foreach (var ch in cfp.Channels)
                 {
@@ -288,32 +290,32 @@
                         <span class="cfp-val">@ch.Value.ToString("0.00")</span>
                     </div>
                 }
-                <div class="cfp-note">continuous readings of your data — not a personality type.<br/>hover a row for the exact metric.</div>
+                <div class="cfp-note">@((MarkupString)L["MapLegend.FingerprintNote"].Value)</div>
             </div>
         </div>
     }
 
     @if (Model is { } m2 && (m2.Nodes.Count == 0))
     {
-        <div class="cempty">Your portrait fills in as you write.</div>
+        <div class="cempty">@L["MapLegend.EmptyPortrait"]</div>
     }
     else if (Model is { } m3)
     {
         @* the living-system HUD (design 3): discrete stat CARDS — icon ring + value + word *@
         <div class="chud">
-            @StatCard("✦", $"{m3.Nodes.Count(n => n.Id > 0)}", "stars", m3.LinkedFraction, $"{F0(m3.LinkedFraction * 100)}% linked", "#19d3ff",
-                      "Each star is one theme or person the map tracks. \"Linked\" = connected to at least one other star.")
+            @StatCard("✦", $"{m3.Nodes.Count(n => n.Id > 0)}", L["MapLegend.CaptionStars"], m3.LinkedFraction, L["MapLegend.SubLinked", F0(m3.LinkedFraction * 100)], "#19d3ff",
+                      L["MapLegend.TooltipStars"])
             @if (Stats is { } sg)
             {
-                @StatCard("◌", Word3(sg.Density, "sparse", "growing", "woven"), "connections", null, "", "#00e88f",
-                          "How linked your themes are — sparse (few ties), growing, or woven together.")
-                @StatCard("◎", Word3(sg.ContradictionLoad, "low", "moderate", "high"), "tension", null, "", "#ff2e6e",
-                          "How much of what you've written pulls in opposite directions.")
-                @StatCard("✧", CertaintyWord(m3), "confidence", null, "", "#7c6bff",
-                          "How settled the analyst is about these themes overall.")
+                @StatCard("◌", Word3(sg.Density, L["MapLegend.Sparse"], L["MapLegend.Growing"], L["MapLegend.Woven"]), L["MapLegend.CaptionConnections"], null, "", "#00e88f",
+                          L["MapLegend.TooltipConnections"])
+                @StatCard("◎", Word3(sg.ContradictionLoad, L["MapLegend.Low"], L["MapLegend.Moderate"], L["MapLegend.High"]), L["MapLegend.CaptionTension"], null, "", "#ff2e6e",
+                          L["MapLegend.TooltipTension"])
+                @StatCard("✧", CertaintyWord(m3), L["MapLegend.CaptionConfidence"], null, "", "#7c6bff",
+                          L["MapLegend.TooltipConfidence"])
             }
-            @if (MemorySpan is { } msp) { @StatCard("⧗", msp, "time span", null, "", "#ff8a3d",
-                      "The span of time your entries and remembered life-events cover.") }
+            @if (MemorySpan is { } msp) { @StatCard("⧗", msp, L["MapLegend.CaptionTimeSpan"], null, "", "#ff8a3d",
+                      L["MapLegend.TooltipTimeSpan"]) }
         </div>
     }
 
@@ -329,7 +331,7 @@
             @* the STORY leads — plain language about what this is in their life *@
             @if (_story is null)
             {
-                <div class="ci-story ci-story-loading">reading…</div>
+                <div class="ci-story ci-story-loading">@L["MapLegend.Reading"]</div>
             }
             else
             {
@@ -343,16 +345,16 @@
 
             @* the stats stay honest but folded — every visual remains explainable *@
             <details class="ci-details">
-                <summary>how this is drawn</summary>
+                <summary>@L["MapLegend.HowDrawn"]</summary>
                 @* RAW metrics, not position: X/Y are rank-spread + relaxed for legibility, so
                    deriving numbers from them would show plausible-but-wrong values *@
-                <div class="ci-row"><span>Valence</span><span class="ci-val">@F2(s.Valence)</span></div>
+                <div class="ci-row"><span>@L["MapLegend.RowValence"]</span><span class="ci-val">@F2(s.Valence)</span></div>
                 <div class="ci-bar"><i style="width:@F0((s.Valence + 1) * 50)%"></i></div>
-                <div class="ci-row"><span>Energy</span><span class="ci-val">@F2(s.Energy)</span></div>
+                <div class="ci-row"><span>@L["MapLegend.RowEnergy"]</span><span class="ci-val">@F2(s.Energy)</span></div>
                 <div class="ci-bar"><i style="width:@F0(s.Energy * 100)%"></i></div>
-                <div class="ci-row"><span>Form</span><span class="ci-val">@(s.IsCircle ? "circle · resolved" : $"{s.Sides}-gon")</span></div>
-                <div class="ci-row"><span>Confidence</span><span class="ci-val">@ConfidenceWord(s)</span></div>
-                <div class="ci-row"><span>Evidence</span><span class="ci-val">@(s.Rings switch { 0 => "unwritten", 1 => "a few entries", 2 => "revisited", _ => "long-standing" })</span></div>
+                <div class="ci-row"><span>@L["MapLegend.RowForm"]</span><span class="ci-val">@(s.IsCircle ? L["MapLegend.FormCircle"].Value : L["MapLegend.FormGon", s.Sides].Value)</span></div>
+                <div class="ci-row"><span>@L["MapLegend.RowConfidence"]</span><span class="ci-val">@ConfidenceWord(s)</span></div>
+                <div class="ci-row"><span>@L["MapLegend.RowEvidence"]</span><span class="ci-val">@(s.Rings switch { 0 => L["MapLegend.EvidenceUnwritten"].Value, 1 => L["MapLegend.EvidenceFew"].Value, 2 => L["MapLegend.EvidenceRevisited"].Value, _ => L["MapLegend.EvidenceLongstanding"].Value })</span></div>
                 <div class="ci-why">@s.Why</div>
             </details>
 
@@ -365,7 +367,7 @@
                     .Where(n => n is not null).Select(n => n!.Value).Take(6).ToList();
                 if (peers.Count > 0)
                 {
-                    <div class="ci-sect">CONNECTED TO</div>
+                    <div class="ci-sect">@L["MapLegend.ConnectedTo"]</div>
                     <div class="ci-chips">
                         @foreach (var pn in peers)
                         {
@@ -377,11 +379,11 @@
                 }
             }
 
-            <button class="ci-ask" @onclick="() => OnAsk.InvokeAsync(s)">💬 ask the agent about this</button>
+            <button class="ci-ask" @onclick="() => OnAsk.InvokeAsync(s)">💬 @L["MapLegend.AskAgent"]</button>
 
             @if (s.Dashed)
             {
-                <button class="ci-reject" @onclick="() => DoReject(s.Id)">✋ You over-parsed me — remove this</button>
+                <button class="ci-reject" @onclick="() => DoReject(s.Id)">✋ @L["MapLegend.OverParsed"]</button>
             }
         </aside>
     }
@@ -553,16 +555,16 @@
         try
         {
             var b64 = await JS.InvokeAsync<string?>("spExportConstellation", _svgEl);
-            if (string.IsNullOrEmpty(b64)) { _exportNote = "export failed"; return; }
+            if (string.IsNullOrEmpty(b64)) { _exportNote = L["MapLegend.ExportFailed"].Value; return; }
             var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SemanticPortrait");
             Directory.CreateDirectory(dir);
             var file = Path.Combine(dir, $"constellation-{DateTime.Now:yyyyMMdd-HHmm}.png");
             await File.WriteAllBytesAsync(file, Convert.FromBase64String(b64));
-            _exportNote = $"saved → Pictures\\SemanticPortrait\\{Path.GetFileName(file)}";
+            _exportNote = L["MapLegend.ExportSaved", Path.GetFileName(file)].Value;
         }
         catch (Exception ex)
         {
-            _exportNote = "export failed";
+            _exportNote = L["MapLegend.ExportFailed"].Value;
             SemanticPortrait.Core.DevTrap.Report("constellation-export", ex);
         }
         finally { _exporting = false; StateHasChanged(); }
@@ -795,16 +797,16 @@
         </div>
     };
 
-    private static string CertaintyWord(VisualModel m)
+    private string CertaintyWord(VisualModel m)
     {
         var real = m.Nodes.Where(n => n.Id > 0).ToList();
         if (real.Count == 0) return "—";
         var conf = real.Average(n => Math.Clamp((n.Opacity - 0.35) / 0.65, 0, 1));   // opacity encodes confidence
-        return Word3(conf, "tentative", "settling", "high");
+        return Word3(conf, L["MapLegend.Tentative"], L["MapLegend.Settling"], L["MapLegend.High"]);
     }
 
-    private static string ConfidenceWord(VisualNode n) =>
-        Word3(Math.Clamp((n.Opacity - 0.35) / 0.65, 0, 1), "low — my inference", "moderate", "high — your words");
+    private string ConfidenceWord(VisualNode n) =>
+        Word3(Math.Clamp((n.Opacity - 0.35) / 0.65, 0, 1), L["MapLegend.ConfLow"], L["MapLegend.Moderate"], L["MapLegend.ConfHigh"]);
 
     /// <summary>The wavy edge as an SMIL motion path, so a spark can ride the actual curve.</summary>
     private static string EdgeMotionPath(Pt a, Pt b, VisualEdge e)
