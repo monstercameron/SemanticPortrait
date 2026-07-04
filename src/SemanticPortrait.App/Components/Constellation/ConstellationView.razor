@@ -1,5 +1,6 @@
 @using SemanticPortrait.Core.Constellation
 @using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.Components.Rendering
 @implements IDisposable
 @inject IStringLocalizer<SharedResource> L
 
@@ -54,22 +55,7 @@
         @* far-field micro-stars: uniform, ultra-faint — NO corner of the sky reads as flat black.
            Fingerprint: the dust field's GRAIN tracks the inferred share (texture channel). *@
         <g style="opacity:@F(FpDust)">
-        @for (var fi = 0; fi < 220; fi++)
-        {
-            <circle class="cdust" cx="@F(Dust(fi * 3 + 901) * _spanX)" cy="@F(Dust(fi * 3 + 902) * 1000)"
-                    r="@F(0.55 + Dust(fi * 3 + 903) * 0.5)" style="opacity:0.19" />
-        }
-        @* cosmic dust: power-law sizes — mostly grains, a few bright motes; every fifth star
-           TWINKLES (opacity-only, staggered — bounded motion) *@
-        @for (var di = 0; di < 300; di++)
-        {
-            var dr = 0.4 + Math.Pow(Dust(di * 7 + 3), 3) * 2.6;
-            var tw = di % 5 == 0;
-            var dustStyle = $"opacity:{F(0.05 + Dust(di * 5 + 4) * (dr > 1.6 ? 0.42 : 0.24))}"
-                + (tw ? $"; --twd:{F(3.5 + Dust(di + 77) * 5)}s; animation-delay:-{F(Dust(di + 31) * 8)}s" : "");
-            <circle class="cdust @(tw ? "ctwinkle" : "")" cx="@F(Dust(di * 2 + 1) * _spanX)" cy="@F(Dust(di * 2 + 2) * 1000)"
-                    r="@F(dr)" style="@dustStyle" />
-        }
+        @DustField()
         </g>
 
         @if (Model is { } vm)
@@ -596,7 +582,13 @@
         catch { _story = ""; }
     }
 
-    protected override void OnParametersSet() => RecomputePositions();
+    private VisualModel? _lastModel;
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(Model, _lastModel)) return;
+        _lastModel = Model;
+        RecomputePositions();
+    }
 
     private readonly HashSet<long> _satVisible = new();
     private readonly Dictionary<long, Pt> _satLabelPos = new();
@@ -679,6 +671,52 @@
 
     // deterministic pseudo-random for the static dust field (no Math.Random — layout stability)
     private static double Dust(int i) { var v = Math.Sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.Floor(v); }
+
+    // 520 dust <circle>s are a pure function of _spanX (deterministic Dust()) — cache the built
+    // fragment and only rebuild it when _spanX actually changes, instead of on every render.
+    private RenderFragment? _dustCache;
+    private double _dustSpanX = double.NaN;
+
+    private RenderFragment DustField()
+    {
+        if (_dustCache is null || _dustSpanX != _spanX)
+        {
+            _dustSpanX = _spanX;
+            _dustCache = BuildDustField();
+        }
+        return _dustCache;
+    }
+
+    private RenderFragment BuildDustField() => builder =>
+    {
+        var seq = 0;
+        for (var fi = 0; fi < 220; fi++)
+        {
+            builder.OpenElement(seq++, "circle");
+            builder.AddAttribute(seq++, "class", "cdust");
+            builder.AddAttribute(seq++, "cx", F(Dust(fi * 3 + 901) * _spanX));
+            builder.AddAttribute(seq++, "cy", F(Dust(fi * 3 + 902) * 1000));
+            builder.AddAttribute(seq++, "r", F(0.55 + Dust(fi * 3 + 903) * 0.5));
+            builder.AddAttribute(seq++, "style", "opacity:0.19");
+            builder.CloseElement();
+        }
+        // cosmic dust: power-law sizes — mostly grains, a few bright motes; every fifth star
+        // TWINKLES (opacity-only, staggered — bounded motion)
+        for (var di = 0; di < 300; di++)
+        {
+            var dr = 0.4 + Math.Pow(Dust(di * 7 + 3), 3) * 2.6;
+            var tw = di % 5 == 0;
+            var dustStyle = $"opacity:{F(0.05 + Dust(di * 5 + 4) * (dr > 1.6 ? 0.42 : 0.24))}"
+                + (tw ? $"; --twd:{F(3.5 + Dust(di + 77) * 5)}s; animation-delay:-{F(Dust(di + 31) * 8)}s" : "");
+            builder.OpenElement(seq++, "circle");
+            builder.AddAttribute(seq++, "class", $"cdust {(tw ? "ctwinkle" : "")}");
+            builder.AddAttribute(seq++, "cx", F(Dust(di * 2 + 1) * _spanX));
+            builder.AddAttribute(seq++, "cy", F(Dust(di * 2 + 2) * 1000));
+            builder.AddAttribute(seq++, "r", F(dr));
+            builder.AddAttribute(seq++, "style", dustStyle);
+            builder.CloseElement();
+        }
+    };
 
     /// <summary>Mix a hex color toward white — luminous label ink while the hue lives in the glow.</summary>
     private static string Lighten(string hex, double t)

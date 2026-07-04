@@ -858,7 +858,7 @@
                         var isAnalyst = group.Any(g => g.Text.StartsWith("🧠"));
                         @if (group.Count == 1)
                         {
-                            <div class="sp-msg sp-msg-tool">
+                            <div class="sp-msg sp-msg-tool" @key="head.Key">
                                 <div class="sp-bubble sp-tool-bubble @(head.Expanded ? "open" : "")"
                                      @onclick="() => head.Expanded = !head.Expanded" title="Click to inspect">
                                     <span>@head.Text</span>
@@ -876,7 +876,7 @@
                         else
                         {
                             var selected = group.FirstOrDefault(g => g.Expanded);
-                            <div class="sp-msg sp-msg-tool">
+                            <div class="sp-msg sp-msg-tool" @key="head.Key">
                                 <div class="sp-tool-folder @(head.FolderOpen ? "open" : "")">
                                     <div class="sp-tool-folder-head" @onclick="() => head.FolderOpen = !head.FolderOpen"
                                          title="@(isAnalyst ? "I quietly studied that entry and updated your map — click to see exactly what I noted." : "Actions I took — click to inspect.")">
@@ -905,11 +905,11 @@
                     }
                     else if (m.Role == "sys")
                     {
-                        <div class="sp-msg sp-msg-sys"><div class="sp-bubble">@m.Html</div></div>
+                        <div class="sp-msg sp-msg-sys" @key="m.Key"><div class="sp-bubble">@m.Html</div></div>
                     }
                     else
                     {
-                        <div class="sp-msg sp-msg-@m.Role" data-msg-id="@m.DbId">
+                        <div class="sp-msg sp-msg-@m.Role" @key="m.Key" data-msg-id="@m.DbId">
                             @if (m.Role == "ai")
                             {
                                 <img class="sp-avatar" src="img/logo.png" alt="SemanticPortrait" />
