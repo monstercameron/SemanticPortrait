@@ -190,7 +190,7 @@ public class OpenAICompatChatClient : IChatProvider
                 if (data == "[DONE]") break;
 
                 StreamEv? ev = null;
-                try { ev = Parse(data); } catch { ev = null; }
+                try { ev = Parse(data); } catch (Exception e) { ev = null; DevTrap.Report("sse-parse-compat", e); }
                 if (ev is not null) yield return ev;
             }
         }

@@ -313,6 +313,11 @@ public partial class Home
 #if DEBUG
         DevTrap.Trapped -= OnDevTrap;
 #endif
+        _reminders?.Dispose();
+        _idle?.Dispose();
+        if (_voiceAudio is not null) _voiceAudio.LevelChanged -= OnMicLevel;
+        _voice?.Dispose();
+        _voiceAudio?.Dispose();
     }
 
     /// <summary>Dev-only on-screen error surface. Two outlets per DevTrap report: a ⚠️ sys

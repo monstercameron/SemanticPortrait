@@ -275,7 +275,7 @@ public sealed class OpenAIClient : IChatProvider, IEmbedder
                     return null;
             }
         }
-        catch { return null; }
+        catch (Exception e) { DevTrap.Report("sse-parse-openai", e); return null; }
     }
 
     private static string Truncate(string s, int n) => s.Length <= n ? s : s[..n] + "…";

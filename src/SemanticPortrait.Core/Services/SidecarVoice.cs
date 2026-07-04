@@ -12,7 +12,7 @@ namespace SemanticPortrait.Core;
 /// Configuration (overridable): voice_py = python.exe path, voice_dir = whispertome repo root.
 /// Defaults probe the conventional sibling-checkout location.
 /// </summary>
-public sealed class SidecarVoice
+public sealed class SidecarVoice : IDisposable
 {
     private readonly string _python;
     private readonly string _workDir;
@@ -189,6 +189,17 @@ public sealed class SidecarVoice
     {
         try { _server?.Kill(entireProcessTree: true); } catch { }
         _server?.Dispose(); _server = null;
+        // A killed server has no session left to reap — drop the idle timer with it so a
+        // future StartServerAsync re-arms a fresh one instead of leaving a dangling ticker.
+        _idleKill?.Dispose(); _idleKill = null;
+    }
+
+    /// <summary>Teardown only — never call mid-session. Stops the idle-reaper timer and kills
+    /// any live sidecar process; does not affect STT/TTS behavior while the app is running.</summary>
+    public void Dispose()
+    {
+        _idleKill?.Dispose();
+        KillServer();
     }
 
     /// <summary>Markdown → speakable plain text, capped at a sentence boundary (~900 chars) so a

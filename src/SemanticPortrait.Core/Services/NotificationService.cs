@@ -61,7 +61,7 @@ public sealed class NotificationService
         // Discreet mode short-circuits the classifier: nothing personal ever leaves, and no
         // provider call is spent deciding.
         bool isPrivate = Discreet || await ClassifyPrivateAsync(text, ct);
-        try { if (_db.IsOpen) _db.SetReminderPrivate(reminderId, isPrivate); } catch { }
+        try { if (_db.IsOpen) _db.SetReminderPrivate(reminderId, isPrivate); } catch (Exception e) { DevTrap.Report("notif-setprivate", e); }
 
         // Locked-screen safety: only non-private text crosses into the OS notification platform.
         var title = "SemanticPortrait";

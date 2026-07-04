@@ -69,7 +69,7 @@ public partial class Home
             try { Database.AddAttachment(messageId, p.Mime, p.Full, p.Thumb, string.IsNullOrWhiteSpace(p.Caption) ? null : p.Caption.Trim()); }
             catch (Exception e) { DevTrap.Report("attach", e); }
         _pendingPhotos.Clear();
-        try { bubble.Photos = Database.ThumbsFor(messageId); } catch { }
+        try { bubble.Photos = Database.ThumbsFor(messageId); } catch (Exception e) { DevTrap.Report("photos-thumbs", e); }
     }
 
     /// <summary>Captions the user typed on pending photos, as a text line for the entry so the

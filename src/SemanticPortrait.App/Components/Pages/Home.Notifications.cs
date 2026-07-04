@@ -75,7 +75,7 @@ public partial class Home
         catch (Exception e)
         {
             DevTrap.Report("drain-analysis", e);
-            try { Bump(pending); } catch { }   // best-effort bump
+            try { Bump(pending); } catch (Exception be) { DevTrap.Report("notif-bump", be); }   // best-effort bump
         }
         finally { _drainBusy = false; }
     }
