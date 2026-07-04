@@ -1001,7 +1001,7 @@
                     }
                     else if (m.Role == "sys")
                     {
-                        <div class="sp-msg sp-msg-sys"><div class="sp-bubble">@Md(m.Text)</div></div>
+                        <div class="sp-msg sp-msg-sys"><div class="sp-bubble">@m.Html</div></div>
                     }
                     else
                     {
@@ -1044,7 +1044,7 @@
                                 else
                                 {
                                     @* sp-streaming paints a live caret at the end of the text via CSS *@
-                                    <div class="sp-bubble @(m.Streaming ? "sp-streaming" : "")">@Md(m.Text)</div>
+                                    <div class="sp-bubble @(m.Streaming ? "sp-streaming" : "")">@m.Html</div>
                                 }
                                 @if (m.Sourced)
                                 {

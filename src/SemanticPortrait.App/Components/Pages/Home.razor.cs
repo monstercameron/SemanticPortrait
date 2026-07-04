@@ -118,6 +118,22 @@ public partial class Home
         public string Role { get; init; } = "ai";
         public string Text { get; set; } = "";
         public string Time { get; init; } = "now";
+        /// <summary>Stable identity for Blazor's @key so the diff survives the tool-bubble
+        /// remove/re-add dance instead of churning message elements by index.</summary>
+        public Guid Key { get; } = Guid.NewGuid();
+        // Rendered-markdown cache: re-parsing every message's Markdown on every render (once per
+        // streamed token, across the whole thread) was the dominant streaming cost. Parse only
+        // when Text actually changes; prior bubbles return their cached HTML untouched.
+        private string? _htmlFrom;
+        private MarkupString _html;
+        public MarkupString Html
+        {
+            get
+            {
+                if (!ReferenceEquals(_htmlFrom, Text)) { _html = Md(Text); _htmlFrom = Text; }
+                return _html;
+            }
+        }
         public string? Detail { get; set; }
         public bool Expanded { get; set; }
         public bool Sourced { get; set; }

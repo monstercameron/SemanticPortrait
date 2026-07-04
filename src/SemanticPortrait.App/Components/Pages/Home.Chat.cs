@@ -29,6 +29,19 @@ public partial class Home
                $"entry text leaves this machine, {(masking ? "PII-masked first" : "masking is OFF")}); {recall}.";
     }
 
+    // Streaming used to fire StateHasChanged per token — each one re-renders the whole shell.
+    // Cap live-stream repaints to ~30fps: the growing reply.Text always holds every token, and
+    // each stream's UNCONDITIONAL final StateHasChanged (after Streaming=false) guarantees the
+    // last tokens paint. Purely a smoothness/CPU win; final content is unchanged.
+    private DateTime _lastStreamPaint;
+    private bool ShouldPaintStream()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - _lastStreamPaint).TotalMilliseconds < 33) return false;
+        _lastStreamPaint = now;
+        return true;
+    }
+
     /// <summary>Have the agent post an unprompted message (reminders, the post-import welcome).
     /// Gets the read-only recall tools so a proactive message can be GROUNDED in the portrait —
     /// the post-import continuation greeting is exactly a recall-then-speak move.</summary>
@@ -64,7 +77,8 @@ public partial class Home
                 ct: watchdog.Token))
             {
                 if (perr.IsErrToken(tok)) continue;
-                reply.Text += tok; clean.Append(tok); _scrollDown = true; StateHasChanged();
+                reply.Text += tok; clean.Append(tok); _scrollDown = true;
+                if (ShouldPaintStream()) StateHasChanged();
             }
         }
         catch (Exception e) { DevTrap.Report("proactive-stream", e); }
@@ -135,7 +149,7 @@ public partial class Home
             {
                 if (perr.IsErrToken(tok)) continue;
                 reply.Text += tok; clean.Append(tok); _scrollDown = true;
-                await InvokeAsync(StateHasChanged);
+                if (ShouldPaintStream()) await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception e) { DevTrap.Report("greet-stream", e); }
@@ -347,7 +361,7 @@ public partial class Home
                 reply.Text += token;
                 clean.Append(token);
                 _scrollDown = true;
-                StateHasChanged();
+                if (ShouldPaintStream()) StateHasChanged();
             }
         }
         catch (OperationCanceledException)
