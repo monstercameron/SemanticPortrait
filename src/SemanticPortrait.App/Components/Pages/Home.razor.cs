@@ -127,6 +127,10 @@ public partial class Home
         /// <summary>Folder open/closed for a run of tool calls (kept on the run's FIRST message;
         /// separate from Expanded, which marks the one selected chip inside the folder).</summary>
         public bool FolderOpen { get; set; }
+        /// <summary>DB row id (0 for not-yet-persisted) — the link to attachments.</summary>
+        public long DbId { get; set; }
+        /// <summary>Attached photo thumbnails (data URIs), loaded with the thread.</summary>
+        public List<SemanticPortrait.Core.AttachmentThumb>? Photos { get; set; }
     }
 
     /// <summary>Solitary chip selection inside a tool folder: selecting a step deselects the
@@ -145,10 +149,15 @@ public partial class Home
     {
         _messages.Clear();
         _clearedBefore = 0;   // a fresh thread load always shows everything
+        var withPhotos = Database.MessageIdsWithAttachments();
         foreach (var m in Database.GetMessages())
         {
             var role = m.Role switch { "user" => "user", "tool" => "tool", _ => "ai" };
-            _messages.Add(new() { Role = role, Text = m.Text, Time = Friendly(m.CreatedUtc), Detail = m.Detail });
+            _messages.Add(new()
+            {
+                Role = role, Text = m.Text, Time = Friendly(m.CreatedUtc), Detail = m.Detail, DbId = m.Id,
+                Photos = withPhotos.Contains(m.Id) ? Database.ThumbsFor(m.Id) : null,
+            });
         }
         LoadGraph();
         Usage.LoadBaseline();       // snapshot persisted spend so the chip shows the all-time total

@@ -12,6 +12,7 @@ public record Prediction(long Id, string CreatedUtc, string Claim, string Criter
     string? DueUtc, string? ResolvedUtc, string? Outcome, double? Score);
 public record EventRow(long Id, string EventUtc, string Summary);
 public record TodoItem(long Id, string Text, bool Done, string CreatedUtc, string? DueUtc = null);
+public record AttachmentThumb(long Id, string ThumbDataUri, string? Caption);
 public record Reminder(long Id, string DueUtc, string Text, bool Fired);
 public record Notification(long Id, string CreatedUtc, string RefType, long RefId, string Title, string Body, bool Read, bool Surfaced);
 /// <summary>One 1-hop graph edge as seen FROM a focus node: the relation, its direction, and the peer.</summary>

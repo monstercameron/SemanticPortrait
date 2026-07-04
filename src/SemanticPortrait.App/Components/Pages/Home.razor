@@ -834,7 +834,20 @@
                             <div class="sp-col">
                                 @if (m.Role == "user")
                                 {
-                                    <div class="sp-bubble">@m.Text</div>
+                                    @if (m.Photos is { Count: > 0 } photos)
+                                    {
+                                        <div class="sp-bubble-photos">
+                                            @foreach (var ph in photos)
+                                            {
+                                                <img class="sp-entry-photo" src="@ph.ThumbDataUri" alt="@(ph.Caption ?? "photo")"
+                                                     @onclick="() => OpenLightbox(ph.Id)" />
+                                            }
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(m.Text))
+                                    {
+                                        <div class="sp-bubble">@m.Text</div>
+                                    }
                                 }
                                 else if (m.Streaming && string.IsNullOrEmpty(m.Text))
                                 {
@@ -885,7 +898,21 @@
                 </div>
             }
             <div class="sp-composer-wrap">
+                @if (_pendingPhotos.Count > 0)
+                {
+                    <div class="sp-photo-strip">
+                        @for (var pi = 0; pi < _pendingPhotos.Count; pi++)
+                        {
+                            var idx = pi;
+                            <div class="sp-photo-chip">
+                                <img src="@_pendingPhotos[idx].Preview" alt="attachment" />
+                                <button class="sp-photo-x" title="Remove" @onclick="() => RemovePendingPhoto(idx)">×</button>
+                            </div>
+                        }
+                    </div>
+                }
                 <div class="sp-composer">
+                    <button class="sp-attach" title="Attach photos" @onclick="PickPhotos" disabled="@_busy">📎</button>
                     <textarea @ref="_input" @bind="_draft" @bind:event="oninput"
                               @onkeydown="OnKey" disabled="@_busy"
                               placeholder="Write a message…" rows="1"></textarea>
@@ -912,7 +939,7 @@
                         }
                     }
                     <button class="sp-send-circle" @onclick="Send"
-                            disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" title="Send">
+                            disabled="@(_busy || (string.IsNullOrWhiteSpace(_draft) && _pendingPhotos.Count == 0))" title="Send">
                         @(_busy ? "…" : "↑")
                     </button>
                 </div>
@@ -1028,6 +1055,15 @@
     @if (_quitting)
     {
         <div class="sp-quit" aria-hidden="true"></div>
+    }
+
+    @* photo lightbox — full-size, loaded from the encrypted vault on click *@
+    @if (_lightbox is { } full)
+    {
+        <div class="sp-lightbox" @onclick="CloseLightbox">
+            <img src="@full" alt="attachment" @onclick:stopPropagation="true" />
+            <button class="sp-lightbox-x" @onclick="CloseLightbox">✕</button>
+        </div>
     }
 
     @* dev error toasts — float above every view (chat, constellation, ambient) *@

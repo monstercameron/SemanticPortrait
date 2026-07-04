@@ -192,17 +192,24 @@ public partial class Home
 
     private async Task Send()
     {
-        if (_busy || string.IsNullOrWhiteSpace(_draft)) return;
+        // A photo-only entry is valid — allow send when there's text OR pending photos.
+        if (_busy || (string.IsNullOrWhiteSpace(_draft) && _pendingPhotos.Count == 0)) return;
         _busy = true;
         ResetIdle();
 
         var userText = _draft.Trim();
+        // Photos ride WITH the entry: a tag keeps a photo-only entry from embedding empty text and
+        // tells the analyst something visual was shared (it can't see pixels, but it knows they exist).
+        var photoTag = _pendingPhotos.Count is var pn and > 0 ? $"[shared {pn} photo{(pn == 1 ? "" : "s")}]" : "";
+        var persistText = string.IsNullOrEmpty(photoTag) ? userText
+            : (userText.Length > 0 ? userText + "\n" + photoTag : photoTag);
 
         // Temporal context: how long since their last message (before we add this one).
         var prev = Database.GetMessages().LastOrDefault(m => m.Role is "user" or "assistant");
         var sincePhrase = prev is null ? "This is their first message." : $"Time since their last message: {Elapsed(prev.CreatedUtc)}.";
 
-        _messages.Add(new() { Role = "user", Text = userText });
+        var userBubble = new Msg { Role = "user", Text = userText };
+        _messages.Add(userBubble);
         _draft = "";
 
         // The thinking bubble goes up IMMEDIATELY — the embed + compaction below can take whole
@@ -214,7 +221,10 @@ public partial class Home
         StateHasChanged();
 
         // Persist + embed the journal entry; keep its id for metadata attribution.
-        var entryId = await Persist("user", userText);
+        var entryId = await Persist("user", persistText);
+        // Attach the pending photos to the saved entry (encrypted blobs) and hydrate the bubble.
+        userBubble.DbId = entryId;
+        if (entryId > 0) AttachPendingTo(entryId, userBubble);
 
         // Compaction: fold anything older than the 2-day window into a rolling summary
         // (full detail stays searchable in the vec DB). Best-effort.

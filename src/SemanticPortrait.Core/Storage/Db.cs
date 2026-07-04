@@ -475,6 +475,26 @@ public sealed partial class Db
         try { Exec("ALTER TABLE notifications ADD COLUMN surfaced INTEGER NOT NULL DEFAULT 0;"); } catch { /* present */ }
         try { Exec("ALTER TABLE predictions ADD COLUMN notified INTEGER NOT NULL DEFAULT 0;"); } catch { /* present */ }
         try { Exec("ALTER TABLE todos ADD COLUMN due_utc TEXT;"); } catch { /* present */ }
+        // Image attachments live in the ENCRYPTED DB (blob), so a photo of a hard day is behind
+        // the same lock as the words about it — never a loose file on disk.
+        try
+        {
+            Exec("""
+                CREATE TABLE IF NOT EXISTS attachments (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message_id  INTEGER NOT NULL,
+                    kind        TEXT NOT NULL DEFAULT 'image',
+                    mime        TEXT NOT NULL,
+                    thumb       BLOB NOT NULL,   -- small inline-render copy (fast thread paint)
+                    bytes       BLOB NOT NULL,   -- full display copy (lightbox / export)
+                    caption     TEXT,
+                    created_utc TEXT NOT NULL,
+                    FOREIGN KEY(message_id) REFERENCES messages(id)
+                );
+                CREATE INDEX IF NOT EXISTS ix_attach_msg ON attachments(message_id);
+                """);
+        }
+        catch { /* present */ }
     }
 
     /// <summary>Permanently delete ALL data — including settings/API keys — and reset ids
