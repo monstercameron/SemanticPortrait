@@ -198,6 +198,9 @@ public static class MauiProgram
 		builder.Services.AddSingleton(sp => new Compactor(sp.GetRequiredService<Db>(), sp.GetRequiredService<ProviderRegistry>(), cfg));
 		builder.Services.AddSingleton<TraceLog>();
 		builder.Services.AddSingleton<AnalystSubagent>();
+		// Presenters: read-only query/aggregation lifted out of the Razor markup into testable Core.
+		builder.Services.AddSingleton<TimelinePresenter>();
+		builder.Services.AddSingleton<LedgerPresenter>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

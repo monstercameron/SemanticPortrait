@@ -30,6 +30,8 @@
 @inject RecallEngine RecallCore
 @inject IntakeTools Intake
 @inject SemanticPortrait.Core.Constellation.DbConstellationSource ConstSource
+@inject SemanticPortrait.Core.TimelinePresenter Timeline
+@inject SemanticPortrait.Core.LedgerPresenter Ledger
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -478,31 +480,18 @@
         <div class="sp-modal-backdrop" @onclick="() => _showTimeline = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
                 <h3>Timeline</h3>
-                @{
-                    var tlItems = new List<(DateTime Utc, string Icon, string Text)>();
-                    if (Database.IsOpen)
-                    {
-                        foreach (var ev in Database.GetEvents())
-                            if (DateTime.TryParse(ev.EventUtc, null, System.Globalization.DateTimeStyles.RoundtripKind, out var eu))
-                                tlItems.Add((eu.ToUniversalTime(), "📅", ev.Summary));
-                        foreach (var m in Database.GetMessages())
-                            if (m.Role == "user" && DateTime.TryParse(m.CreatedUtc, null, System.Globalization.DateTimeStyles.RoundtripKind, out var mu))
-                                tlItems.Add((mu.ToUniversalTime(), "✍", m.Text.Length > 120 ? m.Text[..120] + "…" : m.Text));
-                    }
-                    var tlDays = tlItems.OrderByDescending(x => x.Utc)
-                        .GroupBy(x => x.Utc.ToLocalTime().Date).ToList();
-                }
+                @{ var tlDays = Timeline.Build(); }
                 @if (tlDays.Count == 0)
                 {
                     <p class="sp-muted">Nothing yet — entries and dated events will appear here.</p>
                 }
                 @foreach (var day in tlDays)
                 {
-                    <p style="color:var(--accent); margin:12px 0 4px; font-weight:600">@day.Key.ToString("dddd, MMM d yyyy")</p>
-                    @foreach (var it in day)
+                    <p style="color:var(--accent); margin:12px 0 4px; font-weight:600">@day.LocalDate.ToString("dddd, MMM d yyyy")</p>
+                    @foreach (var it in day.Items)
                     {
                         <div style="display:flex; gap:8px; margin:3px 0">
-                            <span>@it.Icon</span>
+                            <span>@(it.Kind == SemanticPortrait.Core.TimelineKind.Event ? "📅" : "✍")</span>
                             <span class="sp-muted" style="min-width:52px">@it.Utc.ToLocalTime().ToString("h:mm tt")</span>
                             <span style="color:var(--text)">@it.Text</span>
                         </div>
@@ -689,21 +678,17 @@
         <div class="sp-modal-backdrop" @onclick="() => _showLedger = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw)">
                 <h3>Calibration — track record</h3>
-                @{
-                    var preds = Database.IsOpen ? Database.GetPredictions() : new List<Prediction>();
-                    var resolved = preds.Where(p => p.Score is not null).ToList();
-                    var acc = resolved.Count > 0 ? resolved.Average(p => p.Score!.Value) : 0;
-                }
-                @if (resolved.Count > 0)
+                @{ var cal = Ledger.Build(); }
+                @if (cal.ResolvedCount > 0)
                 {
-                    <p class="sp-muted">Accuracy over @resolved.Count resolved: <strong style="color:var(--accent)">@((acc*100).ToString("0"))%</strong></p>
+                    <p class="sp-muted">Accuracy over @cal.ResolvedCount resolved: <strong style="color:var(--accent)">@((cal.Accuracy*100).ToString("0"))%</strong></p>
                 }
-                @if (preds.Count == 0)
+                @if (cal.Predictions.Count == 0)
                 {
                     <p class="sp-muted">No predictions yet. When you forecast something, the analyst logs a falsifiable prediction and scores it later.</p>
                 }
                 <div class="sp-ledger">
-                    @foreach (var p in preds)
+                    @foreach (var p in cal.Predictions)
                     {
                         <div class="sp-pred @(p.ResolvedUtc is null ? "open" : "done")">
                             <div class="sp-pred-claim">@p.Claim</div>
