@@ -139,7 +139,7 @@
         </div>
         <div class="sp-topbar-right">
             @* mirror of the map's "chat" pill — the two views point at each other the same way *@
-            <button class="sp-cf-chat" title="View Constellation"
+            <button class="sp-cf-chat" title="@L["Topbar.ViewConstellation"]"
                     @onclick="ToggleConstellation">✦ map</button>
             @if (_devModeLabel is { } devMode)
             {
@@ -148,11 +148,11 @@
             <span class="sp-chip sp-chip-muted">@_provider</span>
             @if (!_hideCosts)
             {
-                <span class="sp-chip sp-chip-muted" title="What you've spent with your AI provider (e.g. OpenAI) this month — billed by them, not by this app. It's $0 on a local model. Hide it in ⋯ → Settings.">AI spend · $@Usage.MonthCostUsd.ToString("0.00")/mo</span>
+                <span class="sp-chip sp-chip-muted" title="@L["Topbar.AiSpendTooltip"]">@L["Topbar.AiSpendLabel"] · $@Usage.MonthCostUsd.ToString("0.00")/mo</span>
             }
-            <button class="sp-iconbtn" title="Lock" @onclick="LockNow">🔒</button>
+            <button class="sp-iconbtn" title="@L["Topbar.LockTooltip"]" @onclick="LockNow">🔒</button>
             <button class="sp-iconbtn sp-bell @(_showNotifs ? "sp-on" : "")" @onclick="ToggleNotifs"
-                    title="Notifications">
+                    title="@L["Topbar.NotificationsTooltip"]">
                 🔔
                 @if (_unread > 0)
                 {
@@ -160,7 +160,7 @@
                 }
             </button>
             <button class="sp-iconbtn @(_showMenu ? "sp-on" : "")" @onclick="() => _showMenu = !_showMenu"
-                    title="Menu">⋯</button>
+                    title="@L["Topbar.MenuTooltip"]">⋯</button>
         </div>
     </header>
     }
@@ -170,18 +170,18 @@
         <div class="sp-menu-scrim" @onclick="() => _showNotifs = false">
             <div class="sp-menu sp-notif-drawer" @onclick:stopPropagation="true">
                 <div class="sp-notif-head">
-                    <span>Notifications</span>
+                    <span>@L["Notifs.Title"]</span>
                     @if (_notifs.Count > 0)
                     {
                         <span class="sp-notif-actions">
-                            <button class="sp-iconbtn" title="Mark all read" @onclick="MarkAllRead">✓</button>
-                            <button class="sp-iconbtn" title="Clear all" @onclick="ClearNotifs">🗑</button>
+                            <button class="sp-iconbtn" title="@L["Notifs.MarkAllReadTooltip"]" @onclick="MarkAllRead">✓</button>
+                            <button class="sp-iconbtn" title="@L["Notifs.ClearAllTooltip"]" @onclick="ClearNotifs">🗑</button>
                         </span>
                     }
                 </div>
                 @if (_notifs.Count == 0)
                 {
-                    <div class="sp-menu-info">Nothing yet. Reminders you set show up here.</div>
+                    <div class="sp-menu-info">@L["Notifs.Empty"]</div>
                 }
                 @foreach (var n in _notifs)
                 {
@@ -191,7 +191,7 @@
                             <div class="sp-notif-body">@n.Body</div>
                             <div class="sp-notif-time">@Friendly(n.CreatedUtc)</div>
                         </button>
-                        <button class="sp-notif-x" title="Dismiss"
+                        <button class="sp-notif-x" title="@L["Notifs.DismissTooltip"]"
                                 @onclick="@(() => DismissNotif(n))" @onclick:stopPropagation="true">✕</button>
                     </div>
                 }
@@ -319,18 +319,18 @@
     {
         <div class="sp-dev">
             <div class="sp-dev-head">
-                <span>Dev trace <span class="sp-muted">tool calls · params · thoughts</span></span>
+                <span>@L["Trace.Header"] <span class="sp-muted">@L["Trace.HeaderSub"]</span></span>
                 <span>
-                    <button class="sp-iconbtn" @onclick="() => StateHasChanged()" title="Refresh">⟳</button>
-                    <button class="sp-iconbtn" @onclick="() => { Trace.Clear(); }" title="Clear">🗑</button>
-                    <button class="sp-iconbtn" @onclick="() => _showDev = false" title="Close">✕</button>
+                    <button class="sp-iconbtn" @onclick="() => StateHasChanged()" title="@L["Trace.RefreshTooltip"]">⟳</button>
+                    <button class="sp-iconbtn" @onclick="() => { Trace.Clear(); }" title="@L["Trace.ClearTooltip"]">🗑</button>
+                    <button class="sp-iconbtn" @onclick="() => _showDev = false" title="@L["Trace.CloseTooltip"]">✕</button>
                 </span>
             </div>
             <div class="sp-dev-body">
                 @{ var entries = Trace.Snapshot(); }
                 @if (entries.Count == 0)
                 {
-                    <div class="sp-muted" style="padding:12px;">No trace yet. Send a message.</div>
+                    <div class="sp-muted" style="padding:12px;">@L["Trace.Empty"]</div>
                 }
                 @foreach (var e in entries)
                 {
@@ -531,7 +531,7 @@
     {
         <div class="sp-modal-backdrop" @onclick="() => _showInsights = false">
             <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-lg),94vw); max-height:84vh; overflow:auto">
-                <h3>Insights</h3>
+                <h3>@L["Insights.Title"]</h3>
                 @{
                     var stats = Database.IsOpen ? Database.WritingStats(90) : (0, 0, 0, 90);
                     var mood = Database.IsOpen ? Database.MoodSeries() : new();
@@ -540,14 +540,14 @@
 
                 @* showing up — facts, not a scoreboard *@
                 <div class="sp-stat-row">
-                    <div class="sp-stat"><b>@stats.Item1</b><span>entries · last 90 days</span></div>
-                    <div class="sp-stat"><b>@stats.Item2.ToString("N0")</b><span>words written</span></div>
-                    <div class="sp-stat"><b>@stats.Item3</b><span>active days · of 90</span></div>
+                    <div class="sp-stat"><b>@stats.Item1</b><span>@L["Insights.EntriesLast90"]</span></div>
+                    <div class="sp-stat"><b>@stats.Item2.ToString("N0")</b><span>@L["Insights.WordsWritten"]</span></div>
+                    <div class="sp-stat"><b>@stats.Item3</b><span>@L["Insights.ActiveDaysOf90"]</span></div>
                 </div>
-                <p class="sp-muted" style="margin:2px 0 14px">Showing up, not a streak. Every day you write is enough.</p>
+                <p class="sp-muted" style="margin:2px 0 14px">@L["Insights.ShowingUpBlurb"]</p>
 
                 @* mood over time *@
-                <p class="sp-insight-h">Mood over time</p>
+                <p class="sp-insight-h">@L["Insights.MoodOverTime"]</p>
                 @if (mood.Count >= 2)
                 {
                     <svg class="sp-mood-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -560,23 +560,23 @@
                         <span>@mood[^1].LocalDate.ToString("MMM d, yyyy")</span>
                     </div>
                     <p class="sp-mood-legend">
-                        <span class="sp-mood-val">— valence</span> (up = positive) ·
-                        <span class="sp-mood-en">- - energy</span> (up = energized) · last 90 days · @mood.Count entries with mood
+                        <span class="sp-mood-val">— @L["Insights.ValenceLegend"]</span> (@L["Insights.ValenceHint"]) ·
+                        <span class="sp-mood-en">- - @L["Insights.EnergyLegend"]</span> (@L["Insights.EnergyHint"]) · @L["Insights.Last90Days"] · @L["Insights.EntriesWithMood", mood.Count]
                     </p>
                 }
-                else { <p class="sp-muted">Not enough entries yet to chart.</p> }
+                else { <p class="sp-muted">@L["Insights.NotEnoughToChart"]</p> }
 
                 @* calendar month *@
                 <div class="sp-cal-head">
-                    <button class="sp-iconbtn" @onclick="CalPrev" title="Previous month">‹</button>
+                    <button class="sp-iconbtn" @onclick="CalPrev" title="@L["Insights.PrevMonthTooltip"]">‹</button>
                     <span class="sp-insight-h" style="margin:0">@_calMonth.ToString("MMMM yyyy")</span>
-                    <button class="sp-iconbtn" @onclick="CalNext" title="Next month"
+                    <button class="sp-iconbtn" @onclick="CalNext" title="@L["Insights.NextMonthTooltip"]"
                             disabled="@(_calMonth >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1))">›</button>
                 </div>
                 <p class="sp-cal-legend">
-                    Day tint = that day's mood:
-                    <span class="sp-cal-key sp-cal-key-pos"></span> higher-mood ·
-                    <span class="sp-cal-key sp-cal-key-neg"></span> lower-mood · deeper = stronger
+                    @L["Insights.DayTintLegend"]
+                    <span class="sp-cal-key sp-cal-key-pos"></span> @L["Insights.HigherMood"] ·
+                    <span class="sp-cal-key sp-cal-key-neg"></span> @L["Insights.LowerMood"] · @L["Insights.DeeperStronger"]
                 </p>
                 <div class="sp-cal-grid">
                     @foreach (var dow in new[] { "S", "M", "T", "W", "T", "F", "S" })
@@ -601,7 +601,7 @@
                 </div>
 
                 <div class="sp-modal-actions">
-                    <button class="sp-btn-ghost" @onclick="() => _showInsights = false">Done</button>
+                    <button class="sp-btn-ghost" @onclick="() => _showInsights = false">@L["Common.Done"]</button>
                 </div>
             </div>
         </div>
@@ -831,14 +831,9 @@
                        is never stranded on a blank screen if the model call fails. *@
                     <div class="sp-welcome">
                         <div class="sp-welcome-mark">✦</div>
-                        <h2>This is your journal.</h2>
-                        <p>Write whatever's on your mind below — a line or a page. Over time, an
-                        AI analyst quietly reads it back and builds a living <b>map</b> of you
-                        (open it any time with <b>✦ map</b>, top right).</p>
-                        <p class="sp-welcome-priv">Everything is encrypted on this device and nothing
-                        auto-syncs. Two things do reach the cloud: the AI replies you choose, and —
-                        unless you install local embeddings — the text sent to OpenAI for semantic
-                        recall (masking on by default). Set up your AI model in <b>⋯ → AI model</b>.</p>
+                        <h2>@L["Welcome.Title"]</h2>
+                        <p>@((MarkupString)L["Welcome.Body"].Value)</p>
+                        <p class="sp-welcome-priv">@((MarkupString)L["Welcome.PrivacyNote"].Value)</p>
                     </div>
                 }
                 @if (_clearedBefore > 0)
@@ -957,7 +952,7 @@
                                 }
                                 @if (m.Sourced)
                                 {
-                                    <div class="sp-sourced">✓ Sourced from your journal</div>
+                                    <div class="sp-sourced">@L["Composer.SourcedFromJournal"]</div>
                                 }
                                 <div class="sp-time">
                                     @m.Time
@@ -1011,10 +1006,10 @@
                     </div>
                 }
                 <div class="sp-composer">
-                    <button class="sp-attach" title="Attach photos" @onclick="PickPhotos" disabled="@_busy">📎</button>
+                    <button class="sp-attach" title="@L["Composer.AttachPhotosTooltip"]" @onclick="PickPhotos" disabled="@_busy">📎</button>
                     <textarea @ref="_input" @bind="_draft" @bind:event="oninput"
                               @onkeydown="OnKey" disabled="@_busy"
-                              placeholder="Write today's entry…" rows="1"></textarea>
+                              placeholder="@L["Composer.Placeholder"]" rows="1"></textarea>
                     @if (_voiceAvailable)
                     {
                         @* continuous dictation: idle mic → LIVE red pulsing mic (listen/chunk/type
@@ -1022,23 +1017,23 @@
                            ONLY the explicit click stops the listen. *@
                         <button class="sp-mic @(_recording ? "rec" : "") @(!_recording && _sttPending > 0 ? "busy" : "")"
                                 @onclick="ToggleMic" disabled="@_busy"
-                                title="@(_recording ? "Listening — click to stop dictating" : _sttPending > 0 ? "Transcribing the last of it…" : "Dictate (on-device Whisper, continuous)")">
+                                title="@(_recording ? L["Composer.MicListeningTooltip"] : _sttPending > 0 ? L["Composer.MicTranscribingTooltip"] : L["Composer.MicIdleTooltip"])">
                             @(!_recording && _sttPending > 0 ? "⏳" : "🎙")
                         </button>
                         @if (_recording)
                         {
                             <span class="sp-mic-live">
                                 <span class="sp-mic-meter"><span class="sp-mic-meter-fill" style="width:@(Math.Round(_micLevel * 100))%"></span></span>
-                                listening…@(_sttPending > 0 ? $" ✍{_sttPending}" : "")
+                                @L["Composer.Listening"]@(_sttPending > 0 ? $" ✍{_sttPending}" : "")
                             </span>
                         }
                         else if (_sttPending > 0)
                         {
-                            <span class="sp-mic-live">writing it down…</span>
+                            <span class="sp-mic-live">@L["Composer.WritingItDown"]</span>
                         }
                     }
                     <button class="sp-send-circle" @onclick="Send"
-                            disabled="@(_busy || (string.IsNullOrWhiteSpace(_draft) && _pendingPhotos.Count == 0))" title="Send">
+                            disabled="@(_busy || (string.IsNullOrWhiteSpace(_draft) && _pendingPhotos.Count == 0))" title="@L["Composer.SendTooltip"]">
                         @(_busy ? "…" : "↑")
                     </button>
                 </div>
