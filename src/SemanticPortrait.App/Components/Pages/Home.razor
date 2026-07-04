@@ -148,7 +148,7 @@
             <span class="sp-chip sp-chip-muted">@_provider</span>
             @if (!_hideCosts)
             {
-                <span class="sp-chip sp-chip-muted" title="Spend this month (resets monthly)">$@Usage.MonthCostUsd.ToString("0.00")</span>
+                <span class="sp-chip sp-chip-muted" title="Your AI provider usage this month — billed by them (e.g. OpenAI), not by this app. Hide it in ⋯.">$@Usage.MonthCostUsd.ToString("0.00")</span>
             }
             <button class="sp-iconbtn" title="Lock" @onclick="LockNow">🔒</button>
             <button class="sp-iconbtn sp-bell @(_showNotifs ? "sp-on" : "")" @onclick="ToggleNotifs"
@@ -204,21 +204,10 @@
         <div class="sp-menu-scrim" @onclick="() => _showMenu = false">
             <div class="sp-menu" @onclick:stopPropagation="true">
                 <button class="sp-menu-item" @onclick="@(async () => { await ToggleConstellation(); _showMenu = false; })">
-                    <span>@(_showConstellation ? "💬" : "✦")</span> @(_showConstellation ? "Back to chat" : "View Constellation")
+                    <span>@(_showConstellation ? "💬" : "✦")</span> @(_showConstellation ? "Back to chat" : "Your map")
                 </button>
-                @if (IsDevBuild)
-                {
-                    <button class="sp-menu-item" title="Wipe the dev sandbox and start a virgin thread (DEBUG only; never touches real data)"
-                            @onclick="ResetDevSandbox">
-                        <span>🧪</span> Reset sandbox
-                    </button>
-                }
-                <button class="sp-menu-item" @onclick="@(() => { OpenLedger(); _showMenu = false; })">
-                    <span>🎯</span> Track record
-                </button>
-                <button class="sp-menu-item" @onclick="@(() => { _showDev = !_showDev; _showMenu = false; })">
-                    <span>🐞</span> Developer trace
-                </button>
+
+                <div class="sp-menu-head">Explore</div>
                 <button class="sp-menu-item" @onclick="@(() => { OpenSearch(); _showMenu = false; })">
                     <span>🔎</span> Search entries
                 </button>
@@ -231,6 +220,12 @@
                 <button class="sp-menu-item" @onclick="@(() => { _showTimeline = true; _showMenu = false; })">
                     <span>🕰</span> Timeline
                 </button>
+                <button class="sp-menu-item" @onclick="@(() => { OpenLedger(); _showMenu = false; })"
+                        title="How your predictions scored against what actually happened.">
+                    <span>🎯</span> Track record
+                </button>
+
+                <div class="sp-menu-head">Your data</div>
                 <button class="sp-menu-item" @onclick="@(() => { OpenExport(); _showMenu = false; })">
                     <span>⬇</span> Export…
                 </button>
@@ -240,50 +235,55 @@
                 <button class="sp-menu-item" @onclick="@(async () => { _showMenu = false; await PickImportFiles(); })">
                     <span>📥</span> Import notes…
                 </button>
-                <div class="sp-menu-sep"></div>
+
+                <div class="sp-menu-head">Settings</div>
                 <button class="sp-menu-item" @onclick="@(() => { OpenLlm(); _showMenu = false; })">
-                    <span>🧠</span> LLM settings
+                    <span>🧠</span> AI model…
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { _embMsg = string.Empty; _showLocalEmb = true; _showMenu = false; })">
-                    <span>📦</span> Local embeddings…
+                    <span>📦</span> Local search index…
                 </button>
                 <button class="sp-menu-item" @onclick="@(() => { OpenSecurity(); _showMenu = false; })">
-                    <span>⚙</span> Security
-                </button>
-                <button class="sp-menu-item" @onclick="@(async () => { _showMenu = false; await LockNow(); })">
-                    <span>🔒</span> Lock
-                </button>
-                <button class="sp-menu-item" @onclick="@(() => { ToggleTheme(); _showMenu = false; })">
-                    <span>@(_dark ? "☀" : "☾")</span> @(_dark ? "Light mode" : "Dark mode")
-                </button>
-                <button class="sp-menu-item" @onclick="ToggleHideCosts">
-                    <span>@(_hideCosts ? "👁" : "🚫")</span> @(_hideCosts ? "Show costs" : "Hide costs")
-                </button>
-                <button class="sp-menu-item" @onclick="ToggleStartup">
-                    <span>@(_startWithWindows ? "🚀" : "🛑")</span>
-                    @(_startWithWindows ? "Starts with Windows" : "Start with Windows: off")
-                </button>
-                <button class="sp-menu-item" @onclick="ToggleMotion">
-                    <span>@(_respectMotion ? "🚶" : "✨")</span>
-                    @(_respectMotion ? "Animations: respect OS" : "Animations: always on")
-                </button>
-                <button class="sp-menu-item" @onclick="ToggleDiscreet"
-                        title="Discreet: every Windows notification shows a generic line — nothing personal on the lock screen, ever.">
-                    <span>@(_discreet ? "🕶" : "👁")</span>
-                    @(_discreet ? "Toasts: always discreet" : "Toasts: smart privacy")
+                    <span>⚙</span> Security &amp; privacy…
                 </button>
                 <button class="sp-menu-item" @onclick="CycleCheckin"
                         title="A daily one-line invitation to reflect, at this hour — skipped on days you already wrote. Click to cycle.">
                     <span>🌙</span>
                     @(CheckinHour == 0 ? "Evening check-in: off" : $"Evening check-in: {CheckinHour}:00")
                 </button>
-                <div class="sp-menu-sep"></div>
-                @if (!_hideCosts)
+                <button class="sp-menu-item" @onclick="ToggleDiscreet"
+                        title="Discreet: every Windows notification shows a generic line — nothing personal on the lock screen, ever.">
+                    <span>@(_discreet ? "🕶" : "👁")</span>
+                    @(_discreet ? "Notifications: always discreet" : "Notifications: smart privacy")
+                </button>
+                <button class="sp-menu-item" @onclick="@(() => { ToggleTheme(); _showMenu = false; })">
+                    <span>@(_dark ? "☀" : "☾")</span> @(_dark ? "Light mode" : "Dark mode")
+                </button>
+                <button class="sp-menu-item" @onclick="ToggleMotion">
+                    <span>@(_respectMotion ? "🚶" : "✨")</span>
+                    @(_respectMotion ? "Animations: respect OS" : "Animations: always on")
+                </button>
+                <button class="sp-menu-item" @onclick="ToggleStartup">
+                    <span>@(_startWithWindows ? "🚀" : "🛑")</span>
+                    @(_startWithWindows ? "Starts with Windows" : "Start with Windows: off")
+                </button>
+                <button class="sp-menu-item" @onclick="ToggleHideCosts">
+                    <span>@(_hideCosts ? "👁" : "🚫")</span> @(_hideCosts ? "Show AI costs" : "Hide AI costs")
+                </button>
+
+                @if (IsDevBuild)
                 {
-                    <div class="sp-menu-info">@Usage.Summary()</div>
-                    <div class="sp-menu-info">@Usage.MonthSummary()</div>
+                    <div class="sp-menu-head">Developer</div>
+                    <button class="sp-menu-item" title="Wipe the dev sandbox and start a virgin thread (DEBUG only; never touches real data)"
+                            @onclick="ResetDevSandbox">
+                        <span>🧪</span> Reset sandbox
+                    </button>
+                    <button class="sp-menu-item" @onclick="@(() => { _showDev = !_showDev; _showMenu = false; })">
+                        <span>🐞</span> Developer trace
+                    </button>
                 }
-                <div class="sp-menu-info">@EgressSummary()</div>
+
+                <div class="sp-menu-head">Session</div>
                 @if (_updateTag is { } newTag)
                 {
                     <button class="sp-menu-item" @onclick="OpenReleases"
@@ -291,6 +291,9 @@
                         <span>⬆</span> Update @newTag available…
                     </button>
                 }
+                <button class="sp-menu-item" @onclick="@(async () => { _showMenu = false; await LockNow(); })">
+                    <span>🔒</span> Lock
+                </button>
                 <button class="sp-menu-item" @onclick="HideApp">
                     <span>🫥</span> Hide to tray
                 </button>
@@ -300,6 +303,14 @@
                 <button class="sp-menu-item sp-menu-danger" @onclick="@(() => { _showReset = true; _showMenu = false; })">
                     <span>🗑</span> Erase all data…
                 </button>
+
+                <div class="sp-menu-sep"></div>
+                @if (!_hideCosts)
+                {
+                    <div class="sp-menu-info">@Usage.Summary()</div>
+                    <div class="sp-menu-info">@Usage.MonthSummary()</div>
+                }
+                <div class="sp-menu-info" title="What actually leaves this machine right now">@EgressSummary()</div>
             </div>
         </div>
     }
@@ -405,7 +416,7 @@
     @if (_showExport)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showExport = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(440px,94vw)">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-sm),94vw)">
                 <h3 style="color:var(--text)">Export</h3>
                 <p class="sp-muted">Writes JSON, Markdown, CSV, Mermaid (.mmd) and GraphML to your Desktop.
                     Leave the dates empty for everything.</p>
@@ -436,7 +447,7 @@
     @if (_showBackup)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showBackup = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(480px,94vw)">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw)">
                 <h3 style="color:var(--text)">Backup &amp; restore</h3>
                 <p class="sp-muted">A backup is a complete copy of your database — thread, notes, graph,
                     everything — encrypted with your current key. Keep it somewhere safe; it opens only
@@ -464,7 +475,7 @@
     @if (_showTimeline)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showTimeline = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(560px,94vw); max-height:80vh; overflow:auto">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
                 <h3 style="color:var(--text)">Timeline</h3>
                 @{
                     var tlItems = new List<(DateTime Utc, string Icon, string Text)>();
@@ -506,7 +517,7 @@
     @if (_showSearch)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showSearch = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(560px,94vw); max-height:80vh; overflow:auto">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
                 <h3 style="color:var(--text)">Search entries</h3>
                 <input class="sp-search-box" placeholder="Find exact text in your entries…"
                        value="@_searchQuery" @oninput="RunSearch" autofocus />
@@ -532,7 +543,7 @@
     @if (_showPrograms)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showPrograms = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(540px,94vw); max-height:80vh; overflow:auto">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw); max-height:80vh; overflow:auto">
                 <h3 style="color:var(--text)">Guided programs</h3>
                 <p class="sp-muted" style="margin:0 0 12px">A short, gentle sequence of daily prompts. One a day; skip any day you like.</p>
                 @{ var activeProg = Database.IsOpen ? Programs.Active() : null; }
@@ -564,7 +575,7 @@
     @if (_showInsights)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showInsights = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(600px,94vw); max-height:84vh; overflow:auto">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-lg),94vw); max-height:84vh; overflow:auto">
                 <h3 style="color:var(--text)">Insights</h3>
                 @{
                     var stats = Database.IsOpen ? Database.WritingStats(60) : (0, 0, 0, 60);
@@ -639,7 +650,7 @@
     @if (_showLocalEmb)
     {
         <div class="sp-modal-backdrop" @onclick="() => { if (!_embBusy) _showLocalEmb = false; }">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(460px,94vw)">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-sm),94vw)">
                 <h3 style="color:var(--text)">Local embeddings</h3>
                 @if (LocalEmb.IsAvailable)
                 {
@@ -670,7 +681,7 @@
     @if (_showLedger)
     {
         <div class="sp-modal-backdrop" @onclick="() => _showLedger = false">
-            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(560px,94vw)">
+            <div class="sp-modal" @onclick:stopPropagation="true" style="width:min(var(--modal-md),94vw)">
                 <h3 style="color:var(--text)">Calibration — track record</h3>
                 @{
                     var preds = Database.IsOpen ? Database.GetPredictions() : new List<Prediction>();
@@ -898,6 +909,21 @@
             <div class="sp-messages" @ref="_messagesEl"
                  @oncontextmenu="OnChatContextMenu" @oncontextmenu:preventDefault="true">
               <div class="sp-thread">
+                @if (_messages.Count == 0 && !_busy)
+                {
+                    @* Static welcome — does NOT depend on a working AI greeting, so a fresh user
+                       is never stranded on a blank screen if the model call fails. *@
+                    <div class="sp-welcome">
+                        <div class="sp-welcome-mark">✦</div>
+                        <h2>This is your journal.</h2>
+                        <p>Write whatever's on your mind below — a line or a page. Over time, an
+                        AI analyst quietly reads it back and builds a living <b>map</b> of you
+                        (open it any time with <b>✦ map</b>, top right).</p>
+                        <p class="sp-welcome-priv">Everything is encrypted on this device. Nothing
+                        syncs to any cloud except the AI replies you choose. Set up your AI model in
+                        <b>⋯ → AI model</b> if you haven't yet.</p>
+                    </div>
+                }
                 @if (_clearedBefore > 0)
                 {
                     <button class="sp-cleared-note" @onclick="UnclearChatView" title="Show earlier messages">
@@ -941,8 +967,8 @@
                             <div class="sp-msg sp-msg-tool">
                                 <div class="sp-tool-folder @(head.FolderOpen ? "open" : "")">
                                     <div class="sp-tool-folder-head" @onclick="() => head.FolderOpen = !head.FolderOpen"
-                                         title="Click to see what happened in the background">
-                                        <span>@(isAnalyst ? "🧠 background analysis" : "🔧 tools") · @group.Count steps</span>
+                                         title="@(isAnalyst ? "I quietly studied that entry and updated your map — click to see exactly what I noted." : "Actions I took — click to inspect.")">
+                                        <span>@(isAnalyst ? "🧠 read your entry &amp; updated your map" : "🔧 did a few things") · @group.Count</span>
                                         <span class="sp-tool-caret">@(head.FolderOpen ? "▾" : "▸")</span>
                                     </div>
                                     @if (head.FolderOpen)
@@ -1071,7 +1097,7 @@
                     <button class="sp-attach" title="Attach photos" @onclick="PickPhotos" disabled="@_busy">📎</button>
                     <textarea @ref="_input" @bind="_draft" @bind:event="oninput"
                               @onkeydown="OnKey" disabled="@_busy"
-                              placeholder="Write a message…" rows="1"></textarea>
+                              placeholder="Write today's entry…" rows="1"></textarea>
                     @if (_voiceAvailable)
                     {
                         @* continuous dictation: idle mic → LIVE red pulsing mic (listen/chunk/type
