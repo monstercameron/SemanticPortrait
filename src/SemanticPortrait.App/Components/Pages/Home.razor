@@ -32,6 +32,7 @@
 @inject RecallEngine RecallCore
 @inject IntakeTools Intake
 @inject SemanticPortrait.Core.Constellation.DbConstellationSource ConstSource
+@inject SemanticPortrait.Core.CodexAuth Codex
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -722,6 +723,50 @@
                             </div>
                             <div class="sp-llm-keyhint sp-muted">
                                 @L["Llm.LocalHint"]
+                            </div>
+                        }
+                        else if (prov.OAuth)
+                        {
+                            @* Experimental: rides your ChatGPT subscription via the Codex backend. Left in
+                               English (unlike the localized rest) — it's an opt-in experiment. *@
+                            <div class="sp-llm-local-note" style="border-color:#c9860a;background:rgba(201,134,10,.10)">
+                                ⚠️ <b>Experimental &amp; unofficial.</b> This uses <b>your ChatGPT subscription</b>
+                                through OpenAI's private Codex backend — <b>not</b> the OpenAI API, and <b>not</b> an
+                                OpenAI-sanctioned integration. It can put your ChatGPT account at risk of being
+                                flagged, the private endpoint can change without notice, and it's limited to whatever
+                                model Codex currently allows. Journal text is still masked before it leaves (like any
+                                cloud provider), but use this at your own account risk.
+                            </div>
+
+                            <label class="sp-llm-label">Model</label>
+                            <div class="sp-llm-models">
+                                @foreach (var m in prov.Models)
+                                {
+                                    <button class="sp-llm-model @(m.Id == _llmModel ? "sp-on" : "")"
+                                            @onclick="() => SelectLlmModel(m.Id)">
+                                        <span class="sp-llm-model-name">@m.Name</span>
+                                        @if (!string.IsNullOrEmpty(m.Note)) { <span class="sp-llm-model-note">@m.Note</span> }
+                                    </button>
+                                }
+                            </div>
+
+                            <label class="sp-llm-label">ChatGPT account</label>
+                            <div class="sp-llm-key">
+                                @if (Codex.IsSignedIn)
+                                {
+                                    <span class="sp-llm-pill ok">✓ signed in · @(Codex.Plan) plan</span>
+                                    <button class="sp-btn-ghost" @onclick="SignOutCodex">Sign out</button>
+                                }
+                                else
+                                {
+                                    <button class="sp-send" @onclick="SignInCodex" disabled="@_codexBusy">
+                                        @(_codexBusy ? "Waiting for browser…" : "Sign in with ChatGPT")
+                                    </button>
+                                }
+                            </div>
+                            <div class="sp-llm-keyhint sp-muted">
+                                Opens your browser for OpenAI's login. Tokens are stored encrypted in your vault
+                                (never a plaintext file) and refresh silently. Free — it uses your existing plan, not API billing.
                             </div>
                         }
                         else

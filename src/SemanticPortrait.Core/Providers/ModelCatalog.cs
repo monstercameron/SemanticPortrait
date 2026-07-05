@@ -9,7 +9,7 @@ public sealed record LlmModel(string Id, string Name, ModelPricing? Pricing, str
 /// </summary>
 public sealed record LlmProvider(
     string Id, string Name, string KeyEnv, string KeyHint, string SignupUrl,
-    bool Connected, IReadOnlyList<LlmModel> Models, bool Local = false);
+    bool Connected, IReadOnlyList<LlmModel> Models, bool Local = false, bool OAuth = false);
 
 /// <summary>
 /// Static catalog of inference providers + models surfaced in the LLM-settings modal. Prices are
@@ -28,6 +28,12 @@ public static class ModelCatalog
         {
             new("local-model", "Loaded model", new ModelPricing(0, 0, 0), "chat runs offline · free"),
         }, Local: true),
+        // UNOFFICIAL: rides your ChatGPT subscription via the Codex backend instead of API billing.
+        // Not an OpenAI-sanctioned integration — opt-in, at your own ChatGPT-account risk.
+        new("codex", "ChatGPT plan · Codex (experimental)", "", "", "https://chatgpt.com", true, new LlmModel[]
+        {
+            new("gpt-5.5", "GPT-5.5 · via your ChatGPT plan", new ModelPricing(0, 0, 0), "uses your subscription · $0 API · unofficial"),
+        }, OAuth: true),
         new("anthropic", "Anthropic · Claude", "anthropic", "sk-ant-…", "https://console.anthropic.com/settings/keys", true, new LlmModel[]
         {
             new("claude-opus-4-8", "Claude Opus 4.8", new ModelPricing(5.00, 25.00, 0.50), "Most capable Opus"),

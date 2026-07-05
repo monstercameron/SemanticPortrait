@@ -24,6 +24,7 @@ public partial class Home
     private List<string> _llmDetected = new();
     private bool? _llmReachable;
     private bool _llmDetecting;
+    private bool _codexBusy;   // waiting on the browser OAuth round-trip
 
     private bool _showLedger;
 
@@ -102,6 +103,31 @@ public partial class Home
     {
         Llm.SetKey(_llmProvider, null);
         _llmMsg = L["Llm.KeyRemoved"];
+        RefreshProviderChip();
+    }
+
+    // ---- Codex (ChatGPT-subscription) OAuth --------------------------------
+    // Opens the system browser for OpenAI's login; the loopback listener in CodexAuth catches the
+    // redirect and stores the (encrypted) tokens. English strings inline — opt-in experiment.
+    private async Task SignInCodex()
+    {
+        if (_codexBusy) return;
+        _codexBusy = true; _llmMsg = "Opening your browser — approve the ChatGPT sign-in…"; StateHasChanged();
+        try
+        {
+            var plan = await Codex.LoginAsync(url =>
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }));
+            _llmMsg = $"✓ Signed in — {plan} plan. Select this provider to use it.";
+            RefreshProviderChip();
+        }
+        catch (Exception ex) { _llmMsg = "Sign-in failed: " + ex.Message; }
+        finally { _codexBusy = false; StateHasChanged(); }
+    }
+
+    private void SignOutCodex()
+    {
+        Codex.SignOut();
+        _llmMsg = "Signed out of ChatGPT.";
         RefreshProviderChip();
     }
     private void RefreshProviderChip() => _provider = Providers.Active.DisplayName;

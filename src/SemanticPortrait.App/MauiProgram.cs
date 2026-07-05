@@ -172,6 +172,13 @@ public static class MauiProgram
 		}
 		builder.Services.AddSingleton<LMStudioClient>();
 		builder.Services.AddSingleton<IChatProvider>(sp => sp.GetRequiredService<LMStudioClient>());
+		// UNOFFICIAL "Sign in with ChatGPT" provider — rides a ChatGPT subscription via the Codex
+		// backend. Masked like every cloud provider (journal text still egresses to OpenAI).
+		builder.Services.AddSingleton(sp => new CodexAuth(sp.GetRequiredService<Db>(), sp.GetRequiredService<HttpClient>()));
+		builder.Services.AddSingleton<IChatProvider>(sp => new MaskingChatProvider(
+			new CodexChatClient(sp.GetRequiredService<HttpClient>(), sp.GetRequiredService<CodexAuth>(),
+				sp.GetRequiredService<UsageTracker>(), sp.GetRequiredService<LlmConfig>()),
+			sp.GetRequiredService<IMasker>()));
 		builder.Services.AddSingleton(sp => new ProviderRegistry(
 			sp.GetServices<IChatProvider>(),
 			readSelected: () => Microsoft.Maui.Storage.Preferences.Default.Get<string?>("provider", null),
