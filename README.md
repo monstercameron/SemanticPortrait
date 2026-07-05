@@ -74,6 +74,9 @@ years accumulate.
 - **Reminders that respect your attention.** Due items arrive in-thread when you're looking and
   as a Windows toast when you're not; quiet hours roll late-night pings to morning; a once-a-day
   digest tells you what's on your plate.
+- **A to-do drawer.** When you mention something you need to do, it's quietly tracked — and a
+  button by the bell opens a list you can actually see: check items off, or ask the analyst a
+  question / give it an update on any one of them, right in the thread.
 - **Inspectable thinking.** Tool calls appear as quiet reference chips in the chat ("noted this for
   later"); click one to see exactly what it recorded. A developer trace shows the full reasoning.
 - **Bulk import & export.** Bring in years of old notes and prior analysis from text files — a
