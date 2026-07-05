@@ -177,7 +177,15 @@ public sealed class ExportService
         return json;
     }
 
-    private static string Csv(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
+    private static string Csv(string s)
+    {
+        // CSV/spreadsheet formula-injection guard: a cell starting with = + - @ (or a leading
+        // tab/CR some parsers strip to expose one) becomes a live formula in Excel/Sheets. Journal
+        // text can carry attacker-authored content (imported chat logs), so neutralize with a
+        // leading apostrophe before quoting.
+        if (s.Length > 0 && s[0] is '=' or '+' or '-' or '@' or '\t' or '\r') s = "'" + s;
+        return "\"" + s.Replace("\"", "\"\"") + "\"";
+    }
     private static string Xml(string s) =>
         s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
     private static string Mermaid(string s) =>

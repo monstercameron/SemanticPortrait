@@ -183,8 +183,13 @@ public static class ImportAdapters
     internal static string FromSmsXml(string xml)
     {
         var sb = new StringBuilder();
-        var doc = new XmlDocument();
-        doc.LoadXml(xml);
+        // Untrusted import: prohibit DTDs so a malicious backup can't XXE (external entities) or
+        // billion-laughs (internal entity expansion) us. A DOCTYPE throws → the Normalize() catch
+        // degrades this file to raw text, which is fine.
+        var doc = new XmlDocument { XmlResolver = null };
+        using var reader = XmlReader.Create(new System.IO.StringReader(xml),
+            new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+        doc.Load(reader);
         foreach (XmlNode sms in doc.SelectNodes("//sms")!)
         {
             var body = sms.Attributes?["body"]?.Value;

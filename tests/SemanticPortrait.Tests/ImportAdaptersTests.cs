@@ -18,6 +18,33 @@ public class ImportAdaptersTests
     }
 
     [Fact]
+    public void Sms_xml_with_a_dtd_is_refused_not_entity_expanded()
+    {
+        // A malicious SMS backup with an internal-entity DTD (billion-laughs shape). The hardened
+        // parser prohibits DTDs → FromSmsXml throws → Normalize degrades to raw passthrough.
+        // It must NOT expand the entity (no "AAAAAAAA") and must not hang.
+        const string bomb =
+            "<?xml version=\"1.0\"?>\n" +
+            "<!DOCTYPE smses [ <!ENTITY a \"AAAA\"> <!ENTITY b \"&a;&a;&a;&a;\"> ]>\n" +
+            "<smses><sms body=\"&b;\" date=\"0\" type=\"1\" address=\"x\" /></smses>";
+        var outp = ImportAdapters.Normalize("sms.xml", bomb);
+        Assert.Equal(bomb, outp);                 // untouched passthrough, not the "[date] …" form
+        Assert.DoesNotContain("AAAAAAAA", outp);  // entity never expanded
+    }
+
+    [Fact]
+    public void Sms_xml_without_a_dtd_still_parses()
+    {
+        const string xml =
+            "<?xml version=\"1.0\"?><smses>" +
+            "<sms body=\"running late\" date=\"1700000000000\" type=\"2\" address=\"555\" contact_name=\"Mia\" />" +
+            "</smses>";
+        var outp = ImportAdapters.Normalize("sms.xml", xml);
+        Assert.Contains("running late", outp);
+        Assert.Contains("me → Mia", outp);        // type 2 = sent by the user
+    }
+
+    [Fact]
     public void Discord_json_export_becomes_dated_lines()
     {
         const string json = """

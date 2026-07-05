@@ -41,6 +41,17 @@ public class ExportBackupTests : IDisposable
     }
 
     [Fact]
+    public void Csv_neutralizes_formula_injection()
+    {
+        // An imported chat log could carry a cell that Excel would execute; the export prefixes a
+        // leading = + - @ with an apostrophe so it lands as text, not a live formula.
+        _db.AddMessage("user", "=HYPERLINK(\"http://evil\",\"x\")", "2026-06-01T10:00:00.0000000Z");
+        var csv = _export.ToCsv();
+        Assert.Contains("\"'=HYPERLINK", csv);          // apostrophe-guarded
+        Assert.DoesNotContain(",\"=HYPERLINK", csv);    // never a bare leading =
+    }
+
+    [Fact]
     public void Mermaid_and_graphml_carry_the_graph()
     {
         var a = _db.UpsertNode("fire", "inventing", false, 1.0);
