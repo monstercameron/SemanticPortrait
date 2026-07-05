@@ -36,6 +36,34 @@ public class MaskingTests : IDisposable
     }
 
     [Fact]
+    public void Masks_registered_entity_names_and_round_trips()
+    {
+        var db = NewDb();
+        db.RegisterEntityAlias("Sarah Chen", "Sarah", "person");   // canonical + a nickname mention
+        db.RegisterEntityAlias("Baptist Health", null, "org");
+        var m = new RegexMasker(db, () => true);
+        const string text = "Sarah drove me to Baptist Health on Tuesday.";
+
+        var masked = m.Mask(text);
+        Assert.DoesNotContain("Sarah", masked);           // free-form name masked (regex can't catch it)
+        Assert.DoesNotContain("Baptist Health", masked);
+        Assert.Contains("PERSON_1", masked);
+        Assert.Contains("ORG_1", masked);
+        Assert.Equal(text, m.Unmask(masked));             // fully reversible
+    }
+
+    [Fact]
+    public void Entity_not_yet_registered_is_not_masked()
+    {
+        // Honest limit: the registry can only mask names the analyst has already registered — the
+        // very first mention of a new person still egresses in the clear.
+        var db = NewDb();
+        var m = new RegexMasker(db, () => true);
+        const string text = "A new friend Priya showed up today.";
+        Assert.Equal(text, m.Mask(text));
+    }
+
+    [Fact]
     public void Disabled_is_pass_through()
     {
         var db = NewDb();

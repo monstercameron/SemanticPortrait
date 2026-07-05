@@ -51,6 +51,10 @@ public sealed class RegexMasker : IMasker
         if (_ner is not null)
             foreach (var (kind, value) in _ner.Recognize(text))
                 found.Add((kind, value));
+        // Known entities (people/places/orgs the analyst has registered) — the regex baseline can't
+        // catch free-form names, so pull them from the canonical registry and mask them too.
+        foreach (var (kind, value) in _db.GetEntityMentions())
+            found.Add((kind, value));
 
         // Longest values first so a shorter value that is a substring of a longer one isn't
         // partially replaced.
@@ -64,6 +68,9 @@ public sealed class RegexMasker : IMasker
         var masked = text;
         foreach (var (kind, value) in replacements)
         {
+            // Skip values not actually present (the entity registry lists names from other entries):
+            // avoids minting an alias row for an absent name and the cost of a regex scan for it.
+            if (masked.IndexOf(value, StringComparison.OrdinalIgnoreCase) < 0) continue;
             var token = _db.GetOrCreateAlias(kind, value);
             masked = ReplaceWhole(masked, value, token);
         }

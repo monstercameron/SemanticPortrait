@@ -149,6 +149,33 @@ public sealed partial class Db
         }
     }
 
+    /// <summary>Every entity name the egress masker should pseudonymize — the canonical name plus
+    /// each registered mention — paired with an uppercased kind token (person → PERSON). This is
+    /// how free-form names/places (which the regex patterns can't catch) get masked before any
+    /// cloud call; the first mention of a not-yet-registered entity still egresses in the clear,
+    /// but every mention after the analyst has registered it is tokenized.</summary>
+    public List<(string Kind, string Value)> GetEntityMentions()
+    {
+        lock (_gate)
+        {
+            var list = new List<(string, string)>();
+            if (_conn is null) return list;
+            using var cmd = Conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT kind, canonical_name FROM entities
+                UNION
+                SELECT e.kind, a.mention FROM entity_aliases a JOIN entities e ON e.id = a.entity_id;
+                """;
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                var val = r.GetString(1);
+                if (!string.IsNullOrWhiteSpace(val)) list.Add((r.GetString(0).ToUpperInvariant(), val));
+            }
+            return list;
+        }
+    }
+
     // A late alias registration can leave two nodes for the same entity (one under the mention,
     // one under the canonical). Re-point the mention-node's edges at the canonical node and
     // delete the duplicate. Called under _gate, and always inside the caller's transaction (tx)
