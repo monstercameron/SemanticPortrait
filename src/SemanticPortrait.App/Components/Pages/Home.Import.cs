@@ -17,6 +17,10 @@ public partial class Home
     private string? _impActivity, _impNote;
     private CancellationTokenSource? _impCancel;
 
+    // A journal/chat export is text; anything past this is almost certainly the wrong file, and
+    // reading it whole into memory would OOM the app. Skip with a note rather than fall over.
+    private const long MaxImportBytes = 50L * 1024 * 1024;
+
     private static readonly HashSet<string> _writeTools = new()
         { "save_note", "refine_note", "upsert_node", "link_nodes", "log_event", "set_profile_field", "make_prediction", "import_entry" };
 
@@ -77,7 +81,17 @@ public partial class Home
                 ct.ThrowIfCancellationRequested();
                 i++;
                 string text;
-                try { using var s = await f.OpenReadAsync(); using var rdr = new StreamReader(s); text = await rdr.ReadToEndAsync(); }
+                try
+                {
+                    using var s = await f.OpenReadAsync();
+                    if (s.CanSeek && s.Length > MaxImportBytes)
+                    {
+                        await Note($"📥 {f.FileName}: skipped — too large to import ({s.Length / (1024 * 1024)} MB; max {MaxImportBytes / (1024 * 1024)} MB).");
+                        continue;
+                    }
+                    using var rdr = new StreamReader(s);
+                    text = await rdr.ReadToEndAsync();
+                }
                 catch (Exception ex) { await Note($"📥 {f.FileName}: read failed — {ex.Message}"); continue; }
                 // Source adapters: Discord/WhatsApp/SMS/CSV exports normalize into dated-entry
                 // text; anything unrecognized passes through untouched.
