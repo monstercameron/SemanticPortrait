@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 
 namespace SemanticPortrait.Core;
 
@@ -20,6 +21,7 @@ public sealed class CodexChatClient : IChatProvider
     private const string Endpoint = "https://chatgpt.com/backend-api/codex/responses";
     private const string DefaultModel = "gpt-5.5";
     private const int MaxToolRounds = 6;
+    private const int IdleTimeoutSec = 90;   // max silence between SSE lines before we treat the stream as wedged
     private static readonly ModelPricing Free = new(0, 0, 0);   // covered by the subscription
 
     private readonly HttpClient _http;
@@ -123,13 +125,35 @@ public sealed class CodexChatClient : IChatProvider
             using var reader = new StreamReader(stream);
             while (true)
             {
-                var line = await reader.ReadLineAsync(ct);
+                // Idle cap: the chatgpt.com backend sometimes opens a 200 stream and then goes
+                // silent without ever sending response.completed (observed as "reply never
+                // finishes"). Bound each read so a wedged stream becomes a fast, actionable error
+                // instead of hanging until the app's minutes-long watchdog. ct (user cancel) still
+                // propagates; only the idle timer is swallowed here.
+                string? line = null;
+                var stalled = false;
+                using (var idle = CancellationTokenSource.CreateLinkedTokenSource(ct))
+                {
+                    idle.CancelAfter(TimeSpan.FromSeconds(IdleTimeoutSec));
+                    try { line = await reader.ReadLineAsync(idle.Token); }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested) { stalled = true; }
+                }
+                if (stalled)
+                {
+                    yield return OpenAIClient.StreamEvent.Err(
+                        $"[ChatGPT/Codex stream stalled — no data for {IdleTimeoutSec}s; send again]", done: true);
+                    yield break;
+                }
                 if (line is null) break;
                 if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
                 var data = line["data:".Length..].Trim();
                 if (data.Length == 0 || data == "[DONE]") continue;
                 var ev = OpenAIClient.ParseFrame(data);   // shared Responses SSE parser
-                if (ev is not null) yield return ev;
+                if (ev is not null)
+                {
+                    yield return ev;
+                    if (ev.Done) yield break;   // terminal frame — stop; don't block on a socket the backend may keep open
+                }
             }
         }
     }

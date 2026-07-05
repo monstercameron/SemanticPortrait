@@ -84,6 +84,35 @@ public class OpenAIClientTests
         Assert.Equal((120L, 45L, 100L), ev!.Usage!.Value);
     }
 
+    /// <summary>
+    /// The reader loop must STOP the moment a terminal frame arrives rather than block on the next
+    /// read — the chatgpt.com/Codex backend can hold the connection open after the final event, and
+    /// waiting on a socket that never closes wedged the stream ("reply never finishes", live
+    /// 2026-07-04). Every terminal frame carries Done so the loop can break; a completed frame with
+    /// no usage block must still be terminal (not null).
+    /// </summary>
+    [Fact]
+    public void Terminal_frames_carry_Done_so_the_reader_can_stop()
+    {
+        Assert.True(OpenAIClient.ParseFrame(
+            """{"type":"response.completed","response":{"usage":{"input_tokens":1,"output_tokens":1}}}""")!.Done);
+        // completed WITHOUT usage is still terminal — must not fall through to null (would hang).
+        var noUsage = OpenAIClient.ParseFrame("""{"type":"response.completed"}""");
+        Assert.NotNull(noUsage);
+        Assert.True(noUsage!.Done);
+        Assert.True(OpenAIClient.ParseFrame("""{"type":"response.failed"}""")!.Done);
+        Assert.True(OpenAIClient.ParseFrame("""{"type":"response.incomplete"}""")!.Done);
+        Assert.True(OpenAIClient.ParseFrame("""{"type":"error","message":"x"}""")!.Done);
+    }
+
+    [Fact]
+    public void Non_terminal_frames_are_not_Done()
+    {
+        Assert.False(OpenAIClient.ParseFrame("""{"type":"response.output_text.delta","delta":"hi"}""")!.Done);
+        Assert.False(OpenAIClient.ParseFrame(
+            """{"type":"response.reasoning_summary_text.delta","delta":"…"}""")!.Done);
+    }
+
     [Fact]
     public void Garbage_and_unknown_frames_return_null_not_throw()
     {

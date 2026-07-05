@@ -197,7 +197,11 @@ public sealed class OpenAIClient : IChatProvider, IEmbedder
             if (data.Length == 0 || data == "[DONE]") continue;
 
             var ev = ParseFrame(data);
-            if (ev is not null) yield return ev;
+            if (ev is not null)
+            {
+                yield return ev;
+                if (ev.Done) yield break;   // terminal frame — don't block on a socket that may stay open
+            }
         }
     }
 
@@ -249,7 +253,7 @@ public sealed class OpenAIClient : IChatProvider, IEmbedder
                         else if (fr.TryGetProperty("incomplete_details", out var inc) && inc.ValueKind == JsonValueKind.Object &&
                                  inc.TryGetProperty("reason", out var ir)) msg = $"incomplete: {ir.GetString()}";
                     }
-                    return StreamEvent.Err($"[OpenAI {type}: {msg ?? Truncate(data, 200)}]");
+                    return StreamEvent.Err($"[OpenAI {type}: {msg ?? Truncate(data, 200)}]", done: true);
                 }
                 case "error":
                 {
@@ -257,19 +261,22 @@ public sealed class OpenAIClient : IChatProvider, IEmbedder
                         : root.TryGetProperty("error", out var eo) && eo.ValueKind == JsonValueKind.Object &&
                           eo.TryGetProperty("message", out var eom) ? eom.GetString()
                         : Truncate(data, 200);
-                    return StreamEvent.Err($"[OpenAI stream error: {msg}]");
+                    return StreamEvent.Err($"[OpenAI stream error: {msg}]", done: true);
                 }
 
                 case "response.completed":
+                {
+                    long inTok = 0, outTok = 0, cached = 0;
                     if (root.TryGetProperty("response", out var resp) && resp.TryGetProperty("usage", out var usg))
                     {
-                        long inTok = usg.TryGetProperty("input_tokens", out var itk) ? itk.GetInt64() : 0;
-                        long outTok = usg.TryGetProperty("output_tokens", out var otk) ? otk.GetInt64() : 0;
-                        long cached = usg.TryGetProperty("input_tokens_details", out var idt)
+                        inTok = usg.TryGetProperty("input_tokens", out var itk) ? itk.GetInt64() : 0;
+                        outTok = usg.TryGetProperty("output_tokens", out var otk) ? otk.GetInt64() : 0;
+                        cached = usg.TryGetProperty("input_tokens_details", out var idt)
                             && idt.TryGetProperty("cached_tokens", out var ctk) ? ctk.GetInt64() : 0;
-                        return StreamEvent.UsageEv(inTok, outTok, cached);
                     }
-                    return null;
+                    // Terminal even when usage is absent — carries Done so the reader stops here.
+                    return StreamEvent.Completed(inTok, outTok, cached);
+                }
 
                 default:
                     return null;
@@ -297,12 +304,18 @@ public sealed class OpenAIClient : IChatProvider, IEmbedder
         public ToolCall? ItemAdded;
         public (string ItemId, string Delta)? ArgsDelta;
         public (long In, long Out, long Cached)? Usage;
+        // True on a terminal frame (response.completed / failed / incomplete / error). The reader
+        // loop must STOP after yielding a Done event instead of blocking on the next ReadLineAsync —
+        // the chatgpt.com backend can hold the connection open after the final event, which would
+        // otherwise wedge the stream ("never finishes") until the app watchdog fires minutes later.
+        public bool Done;
 
         public static StreamEvent TextDelta(string s) => new() { Text = s };
         public static StreamEvent ReasoningDelta(string s) => new() { Reasoning = s };
-        public static StreamEvent Err(string s) => new() { Error = s };
+        public static StreamEvent Err(string s, bool done = false) => new() { Error = s, Done = done };
         public static StreamEvent Added(ToolCall c) => new() { ItemAdded = c };
         public static StreamEvent Args(string id, string d) => new() { ArgsDelta = (id, d) };
         public static StreamEvent UsageEv(long i, long o, long cached) => new() { Usage = (i, o, cached) };
+        public static StreamEvent Completed(long i, long o, long cached) => new() { Usage = (i, o, cached), Done = true };
     }
 }
