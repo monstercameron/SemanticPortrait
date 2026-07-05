@@ -1,3 +1,4 @@
+using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
@@ -112,11 +113,39 @@ public partial class Home
 
     private void ScrollDown() => _scrollDown = true;
 
+    // Journal + model text is rendered into a MarkupString shown in the WebView, so it is UNTRUSTED:
+    // DisableHtml() strips raw <script>/<img onerror>/<iframe> (a stored-XSS path — imported
+    // third-party chat logs and prompt-injected model output both reach here), and the link pass in
+    // Md() neutralizes javascript:/data: URIs that DisableHtml doesn't cover. Do NOT drop either
+    // without a security review: without them, any HTML in an entry executes in the host WebView.
     private static readonly Markdig.MarkdownPipeline _md =
-        new Markdig.MarkdownPipelineBuilder().Build();
+        new Markdig.MarkdownPipelineBuilder().DisableHtml().Build();
 
-    private static MarkupString Md(string text) =>
-        (MarkupString)Markdig.Markdown.ToHtml(text ?? "", _md);
+    private static MarkupString Md(string text)
+    {
+        var doc = Markdig.Markdown.Parse(text ?? "", _md);
+        foreach (var link in Markdig.Syntax.MarkdownObjectExtensions.Descendants<Markdig.Syntax.Inlines.LinkInline>(doc))
+            if (!IsSafeLinkUrl(link.Url)) link.Url = "#";
+        using var sw = new System.IO.StringWriter();
+        var renderer = new Markdig.Renderers.HtmlRenderer(sw);
+        _md.Setup(renderer);
+        renderer.Render(doc);
+        sw.Flush();
+        return (MarkupString)sw.ToString();
+    }
+
+    // Allow only benign link schemes; a relative/anchor URL (no scheme before the first '/') is fine.
+    private static bool IsSafeLinkUrl(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return true;
+        var u = url.TrimStart();
+        int colon = u.IndexOf(':');
+        if (colon < 0) return true;                        // no scheme → relative / anchor
+        int slash = u.IndexOf('/');
+        if (slash >= 0 && slash < colon) return true;      // ':' sits inside a path segment, not a scheme
+        var scheme = u[..colon].ToLowerInvariant();
+        return scheme is "http" or "https" or "mailto" or "tel";
+    }
 
     private sealed class Msg
     {
