@@ -27,6 +27,13 @@ public sealed class CodexChatClient : IChatProvider
     private readonly UsageTracker _usage;
     private readonly LlmConfig _cfg;
 
+    // ONE stable id for this app session — reused as the session_id header AND the request's
+    // prompt_cache_key. The real Codex client keeps a single id per conversation so the backend can
+    // cache the (large, unchanging) system-prompt + history prefix across turns; a fresh GUID per
+    // request defeats that caching and makes every turn re-process the whole prompt (slow, and it
+    // worsens as the thread grows). Resetting on restart is fine — caching within a session is the win.
+    private readonly string _sessionId = Guid.NewGuid().ToString();
+
     public CodexChatClient(HttpClient http, CodexAuth auth, UsageTracker usage, LlmConfig cfg)
     { _http = http; _auth = auth; _usage = usage; _cfg = cfg; }
 
@@ -95,9 +102,11 @@ public sealed class CodexChatClient : IChatProvider
         [EnumeratorCancellation] CancellationToken ct)
     {
         var reasoning = new { effort, summary = "auto" };
+        // prompt_cache_key (stable per session) lets the backend reuse the cached system-prompt +
+        // history prefix across turns — the main lever against per-turn latency growth.
         object payload = tools is null
-            ? new { model, reasoning, instructions = systemPrompt, input, stream = true, store = false }
-            : new { model, reasoning, instructions = systemPrompt, input, tools, stream = true, store = false };
+            ? new { model, reasoning, instructions = systemPrompt, input, stream = true, store = false, prompt_cache_key = _sessionId }
+            : new { model, reasoning, instructions = systemPrompt, input, tools, stream = true, store = false, prompt_cache_key = _sessionId };
         var json = JsonSerializer.Serialize(payload);
 
         var resp = await SendAsync(json, ct);
@@ -139,7 +148,7 @@ public sealed class CodexChatClient : IChatProvider
             req.Headers.TryAddWithoutValidation("ChatGPT-Account-ID", auth.Value.AccountId);
             req.Headers.TryAddWithoutValidation("originator", CodexAuth.Originator);
             req.Headers.TryAddWithoutValidation("OpenAI-Beta", "responses=experimental");
-            req.Headers.TryAddWithoutValidation("session_id", Guid.NewGuid().ToString());
+            req.Headers.TryAddWithoutValidation("session_id", _sessionId);
             req.Headers.Accept.ParseAdd("text/event-stream");
 
             var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
