@@ -114,6 +114,16 @@ public partial class Home
         StateHasChanged();
     }
 
+    // A short all-numeric passcode is the weak case: ~20 bits for 6 digits — brute-forceable
+    // offline from a stolen keyvault.json even at 600k PBKDF2 iterations. Require letters, or 8+
+    // digits. Gates only NEW/changed passcodes; existing ones still unlock unchanged.
+    private static bool IsPasscodeTooWeak(string pin)
+    {
+        if (pin.Length >= 8) return false;
+        foreach (var c in pin) if (!char.IsDigit(c)) return false;   // has a letter/symbol → strong enough
+        return true;                                                 // all digits and under 8
+    }
+
     private void SaveSetup()
     {
         _lockMsg = "";
@@ -122,6 +132,7 @@ public partial class Home
         // only ~20 bits — offline-brute-forceable on a stolen device even at 600k PBKDF2 iters.
         // Encourage a longer alphanumeric passphrase; require at least 6 chars.
         if (pin.Length < 6) { _lockMsg = L["Lock.PinTooShort"]; return; }
+        if (IsPasscodeTooWeak(pin)) { _lockMsg = L["Lock.PinTooWeak"]; return; }
         if (pin != _cfgPin2.Trim()) { _lockMsg = L["Lock.PinsDontMatch"]; return; }
 
         try
@@ -151,6 +162,7 @@ public partial class Home
         if (_sessionKey is null) { _secMsg = L["Security.UnlockFirst"]; return; }
         var pin = _newPin.Trim();
         if (pin.Length < 6) { _secMsg = L["Security.NewPinTooShort"]; return; }
+        if (IsPasscodeTooWeak(pin)) { _secMsg = L["Security.NewPinTooWeak"]; return; }
         if (pin != _newPin2.Trim()) { _secMsg = L["Security.PinsDontMatch"]; return; }
         try
         {
