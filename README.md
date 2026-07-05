@@ -155,6 +155,21 @@ Expect a quality trade: local and small hosted models are noticeably weaker anal
 frontier models today. That gap is why the cloud is the default — and why the switch is yours
 to flip, not ours.
 
+### Using your ChatGPT plan instead of an API key (experimental, unofficial)
+
+If you already pay for ChatGPT, **⋯ → LLM settings → ChatGPT plan · Codex** lets you sign in
+with your subscription and use it for analysis instead of buying pay-per-token API credit. Click
+**Sign in with ChatGPT**, approve the login in your browser, and the tokens are stored
+*encrypted in your vault* (never a plaintext file) and refreshed silently.
+
+Be honest with yourself about what this is: it rides OpenAI's **private Codex backend** — the
+same endpoint their Codex CLI uses — which is **not** the OpenAI API and **not** a sanctioned
+third-party integration. It can put your ChatGPT account at risk of being flagged, the endpoint
+can change or break without notice, and it's limited to whichever model Codex currently allows.
+Your entries are still masked before they leave (like any cloud provider), but treat this as an
+at-your-own-risk convenience, not a supported path. The API-key and local options above are the
+stable ones.
+
 ## Built quietly underneath
 
 A desktop application, not a website — **.NET MAUI Blazor Hybrid** on **.NET 10**, native to
