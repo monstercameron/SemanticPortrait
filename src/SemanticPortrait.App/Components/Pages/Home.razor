@@ -151,6 +151,14 @@
                 <span class="sp-chip sp-chip-muted" title="@L["Topbar.AiSpendTooltip"]">@L["Topbar.AiSpendLabel"] · $@Usage.MonthCostUsd.ToString("0.00")/mo</span>
             }
             <button class="sp-iconbtn" title="@L["Topbar.LockTooltip"]" @onclick="LockNow">🔒</button>
+            <button class="sp-iconbtn sp-todos @(_showTodos ? "sp-on" : "")" @onclick="ToggleTodos"
+                    title="@L["Topbar.TodosTooltip"]">
+                📋
+                @if (_openTodoCount > 0)
+                {
+                    <span class="sp-badge">@(_openTodoCount > 99 ? "99+" : _openTodoCount.ToString())</span>
+                }
+            </button>
             <button class="sp-iconbtn sp-bell @(_showNotifs ? "sp-on" : "")" @onclick="ToggleNotifs"
                     title="@L["Topbar.NotificationsTooltip"]">
                 🔔
@@ -193,6 +201,54 @@
                         </button>
                         <button class="sp-notif-x" title="@L["Notifs.DismissTooltip"]"
                                 @onclick="@(() => DismissNotif(n))" @onclick:stopPropagation="true">✕</button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_showTodos)
+    {
+        <div class="sp-menu-scrim" @onclick="CloseTodos">
+            <div class="sp-menu sp-notif-drawer sp-todo-drawer" @onclick:stopPropagation="true">
+                <div class="sp-notif-head">
+                    <span>@L["Todos.Title"]</span>
+                </div>
+                @if (_todos.Count == 0)
+                {
+                    <div class="sp-menu-info">@L["Todos.Empty"]</div>
+                }
+                @foreach (var t in _todos)
+                {
+                    <div class="sp-todo-item @(t.Done ? "sp-todo-done" : "")">
+                        <div class="sp-todo-row">
+                            <button class="sp-todo-check" @onclick="@(() => ToggleTodoDone(t))"
+                                    title="@(t.Done ? L["Todos.ReopenTooltip"] : L["Todos.CompleteTooltip"])">
+                                @(t.Done ? "☑" : "☐")
+                            </button>
+                            <div class="sp-todo-body">
+                                <div class="sp-todo-text">@t.Text</div>
+                                @if (TodoDue(t) is { } due)
+                                {
+                                    <div class="sp-todo-due">@L["Todos.DuePrefix"] @due</div>
+                                }
+                            </div>
+                            <button class="sp-todo-ask-btn" title="@L["Todos.AskTooltip"]"
+                                    @onclick="@(() => StartAskTodo(t))">💬</button>
+                        </div>
+                        @if (_todoAsking == t.Id)
+                        {
+                            <div class="sp-todo-ask">
+                                <textarea class="sp-reset-input sp-todo-ask-input" rows="2"
+                                          placeholder="@L["Todos.AskPlaceholder"]"
+                                          @bind="_todoAskDraft" @bind:event="oninput" @onkeydown="@(e => TodoAskKey(e, t))"></textarea>
+                                <div class="sp-todo-ask-actions">
+                                    <button class="sp-btn-ghost" @onclick="CancelAskTodo">@L["Todos.AskCancel"]</button>
+                                    <button class="sp-send" @onclick="@(() => SendAskTodo(t))"
+                                            disabled="@(string.IsNullOrWhiteSpace(_todoAskDraft) || _busy)">@L["Todos.AskSend"]</button>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             </div>

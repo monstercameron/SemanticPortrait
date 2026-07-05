@@ -378,6 +378,7 @@ public partial class Home
             // set_profile_field (Intake) may have run during this turn's tool loop — refresh the
             // cached topbar name so it reflects any change without a per-render DB query.
             _who = Profile.Get("name");
+            RefreshTodos();   // the agent may have added/closed todos this turn — keep the badge honest
 
             _busy = false;
             _focusNext = true;   // refocus the composer so the user can keep typing

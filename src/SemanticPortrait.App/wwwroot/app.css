@@ -287,7 +287,7 @@ body {
 .sp-mask-consent small strong { display: inline; font-size: inherit; color: var(--text); }
 
 /* notifications: bell + badge + drawer */
-.sp-bell { position: relative; }
+.sp-bell, .sp-todos { position: relative; }   /* anchor the absolutely-positioned .sp-badge */
 .sp-badge {
     position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px;
     padding: 0 4px; border-radius: 999px; background: #e0484d; color: #fff;
@@ -319,6 +319,30 @@ body {
 .sp-notif-title { font-size: 13px; font-weight: 600; }
 .sp-notif-body { font-size: 13px; color: var(--text); white-space: normal; }
 .sp-notif-time { font-size: 11px; color: var(--muted); }
+
+/* to-dos: topbar button + drawer (shares the notif-drawer chrome) */
+.sp-todo-drawer { min-width: 320px; max-width: 380px; }
+.sp-todo-item { display: flex; flex-direction: column; border-radius: 7px; }
+.sp-todo-item:hover { background: var(--panel2); }
+.sp-todo-item:hover .sp-todo-ask-btn { opacity: 1; }
+.sp-todo-row { display: flex; align-items: flex-start; gap: 6px; padding: 8px 8px 8px 6px; }
+.sp-todo-check {
+    background: transparent; border: none; cursor: pointer; color: var(--text);
+    font-size: 16px; line-height: 1.2; padding: 0 2px; flex: 0 0 auto;
+}
+.sp-todo-check:hover { color: var(--accent); }
+.sp-todo-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.sp-todo-text { font-size: 13px; color: var(--text); white-space: normal; word-break: break-word; }
+.sp-todo-due { font-size: 11px; color: var(--muted); }
+.sp-todo-done .sp-todo-text { text-decoration: line-through; color: var(--muted); }
+.sp-todo-ask-btn {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    font-size: 13px; padding: 0 6px; opacity: 0; border-radius: 7px; flex: 0 0 auto;
+}
+.sp-todo-ask-btn:hover { color: var(--text); background: var(--line); }
+.sp-todo-ask { display: flex; flex-direction: column; gap: 6px; padding: 0 8px 10px 30px; }
+.sp-todo-ask-input { margin: 0; width: 100%; resize: vertical; font: inherit; font-size: 13px; }
+.sp-todo-ask-actions { display: flex; justify-content: flex-end; gap: 6px; }
 
 /* reset / wipe modal */
 /* shared modal-width scale — every dialog snaps to one of these instead of ad-hoc px */

@@ -184,6 +184,7 @@ public partial class Home
         LoadGraph();
         Usage.LoadBaseline();       // snapshot persisted spend so the chip shows the all-time total
         ReconcileNotifs();          // back-fill drawer for reminders that fired while locked
+        RefreshTodos();             // populate the to-do badge/list for this session
         _scrollDown = true;
         StartIdle();
         StartReminders();
